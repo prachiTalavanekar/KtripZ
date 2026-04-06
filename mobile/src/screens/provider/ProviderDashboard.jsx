@@ -68,11 +68,20 @@ export default function ProviderDashboard({ navigation }) {
   const { user } = useSelector(s => s.auth);
   const { myRides, loading } = useSelector(s => s.rides);
   const [earnings, setEarnings] = useState(null);
+  const [pendingBookings, setPendingBookings] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(true);
 
-  useEffect(() => {
+  const loadData = () => {
     dispatch(fetchMyRides());
     api.get('/users/earnings').then(setEarnings).catch(console.error);
-  }, []);
+    // Fetch pending bookings across all rides
+    api.get('/bookings/driver/pending').then(data => {
+      setPendingBookings(Array.isArray(data) ? data : []);
+      setPendingLoading(false);
+    }).catch(() => setPendingLoading(false));
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const upcomingRides = myRides.filter(r => r.status === 'scheduled').slice(0, 5);
   const recentRides = myRides.filter(r => r.status !== 'scheduled').slice(0, 3);
@@ -137,7 +146,69 @@ export default function ProviderDashboard({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Upcoming Rides */}
+        {/* ── Booking Requests ── */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.bookingRequestsCard}
+            onPress={() => navigation.getParent()?.navigate('ManageRide', { rideId: null, showAll: true })}
+            activeOpacity={0.85}
+          >
+            <View style={styles.bookingRequestsLeft}>
+              <View style={styles.bookingRequestsIcon}>
+                <Ionicons name="notifications" size={22} color="#fff" />
+                {pendingBookings.length > 0 && (
+                  <View style={styles.notifDot}>
+                    <Text style={styles.notifDotText}>{pendingBookings.length}</Text>
+                  </View>
+                )}
+              </View>
+              <View>
+                <Text style={styles.bookingRequestsTitle}>Booking Requests</Text>
+                <Text style={styles.bookingRequestsSub}>
+                  {pendingLoading
+                    ? 'Loading...'
+                    : pendingBookings.length === 0
+                    ? 'No pending requests'
+                    : `${pendingBookings.length} pending approval`}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.bookingRequestsRight}>
+              {pendingBookings.length > 0 && (
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingBadgeText}>{pendingBookings.length} New</Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Preview of latest 2 pending requests */}
+          {pendingBookings.slice(0, 2).map(b => (
+            <TouchableOpacity
+              key={b._id}
+              style={styles.pendingPreviewCard}
+              onPress={() => navigation.getParent()?.navigate('ManageRide', { rideId: b.rideId?._id || b.rideId })}
+              activeOpacity={0.85}
+            >
+              <View style={styles.pendingAvatar}>
+                <Text style={styles.pendingAvatarText}>{b.passengerId?.name?.[0]?.toUpperCase()}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingName}>{b.passengerId?.name}</Text>
+                <Text style={styles.pendingRoute} numberOfLines={1}>
+                  {b.rideId?.origin?.name} → {b.rideId?.destination?.name}
+                </Text>
+              </View>
+              <View style={styles.pendingMeta}>
+                <Text style={styles.pendingSeats}>{b.seatsBooked} seat(s)</Text>
+                <Text style={styles.pendingAmount}>₹{b.totalAmount}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Upcoming Rides ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Upcoming Rides</Text>
@@ -241,6 +312,47 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 16, paddingTop: 16 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: SIZES.lg, fontWeight: '700', color: COLORS.text },
+
+  // Booking Requests Card
+  bookingRequestsCard: {
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radius,
+    padding: 16, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 10, ...SHADOWS.card,
+  },
+  bookingRequestsLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bookingRequestsIcon: { position: 'relative' },
+  notifDot: {
+    position: 'absolute', top: -4, right: -4,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: COLORS.accent, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: COLORS.primary,
+  },
+  notifDotText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  bookingRequestsTitle: { color: '#fff', fontSize: SIZES.base, fontWeight: '700' },
+  bookingRequestsSub: { color: 'rgba(255,255,255,0.65)', fontSize: SIZES.xs, marginTop: 2 },
+  bookingRequestsRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pendingBadge: {
+    backgroundColor: COLORS.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+  },
+  pendingBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+  // Pending preview cards
+  pendingPreviewCard: {
+    backgroundColor: COLORS.card, borderRadius: SIZES.radius,
+    padding: 12, flexDirection: 'row', alignItems: 'center',
+    gap: 10, marginBottom: 8, ...SHADOWS.card,
+    borderLeftWidth: 3, borderLeftColor: COLORS.accent,
+  },
+  pendingAvatar: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  pendingAvatarText: { color: '#fff', fontWeight: '700', fontSize: SIZES.base },
+  pendingName: { fontSize: SIZES.sm, fontWeight: '700', color: COLORS.text },
+  pendingRoute: { fontSize: SIZES.xs, color: COLORS.textSecondary, marginTop: 2 },
+  pendingMeta: { alignItems: 'flex-end' },
+  pendingSeats: { fontSize: SIZES.xs, color: COLORS.textSecondary },
+  pendingAmount: { fontSize: SIZES.sm, fontWeight: '700', color: COLORS.primary, marginTop: 2 },
   seeAll: { fontSize: SIZES.sm, color: COLORS.primary, fontWeight: '600' },
 
   // Ride Row

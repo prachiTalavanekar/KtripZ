@@ -82,18 +82,24 @@ export default function ManageRideScreen({ route, navigation }) {
 
         {item.status === 'pending' && (
           <View style={styles.actionRow}>
-            <Button
-              title="Approve"
-              onPress={() => handleAction(item._id, 'approve')}
-              style={styles.approveBtn}
-            />
-            <Button
-              title="Reject"
-              variant="outline"
-              onPress={() => handleAction(item._id, 'reject')}
-              style={styles.rejectBtn}
-            />
+            <Button title="Approve" onPress={() => handleAction(item._id, 'approve')} style={styles.approveBtn} />
+            <Button title="Reject" variant="outline" onPress={() => handleAction(item._id, 'reject')} style={styles.rejectBtn} />
           </View>
+        )}
+        {item.status === 'approved' && (
+          <TouchableOpacity
+            style={styles.chatBtn}
+            onPress={() => navigation.navigate('Chat', {
+              bookingId: item._id,
+              driverId: item.passengerId?._id,
+              driverName: item.passengerId?.name,
+              bookingStatus: 'approved',
+            })}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="chatbubble" size={14} color="#fff" />
+            <Text style={styles.chatBtnText}>Chat with {item.passengerId?.name?.split(' ')[0]}</Text>
+          </TouchableOpacity>
         )}
       </View>
     );
@@ -146,6 +152,12 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
   approveBtn: { flex: 1, height: 42 },
   rejectBtn: { flex: 1, height: 42 },
+  chatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radius,
+    paddingVertical: 10, marginTop: 10,
+  },
+  chatBtnText: { color: '#fff', fontWeight: '700', fontSize: SIZES.sm },
   empty: { alignItems: 'center', marginTop: 80, gap: 10 },
   emptyText: { color: COLORS.textSecondary, fontSize: SIZES.base },
 });

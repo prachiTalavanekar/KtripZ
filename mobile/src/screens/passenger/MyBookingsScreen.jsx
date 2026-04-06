@@ -45,6 +45,8 @@ function filterByTab(bookings, tab) {
 // ── Booking Card ──────────────────────────────────────────────────────────────
 function BookingCard({ booking, tab, onChatPress, onCancelPress }) {
   const ride = booking.rideId;
+  // Chat only available when approved
+  const chatEnabled = booking.status === 'approved';
   const isPast = ride?.departureTime && new Date(ride.departureTime) <= new Date();
   const canCancel = booking.status === 'pending' || (booking.status === 'approved' && !isPast);
 
@@ -117,10 +119,17 @@ function BookingCard({ booking, tab, onChatPress, onCancelPress }) {
             <Text style={styles.amountValue}>₹{booking.totalAmount}</Text>
           </View>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.chatBtn} onPress={onChatPress} activeOpacity={0.8}>
-              <Ionicons name="chatbubble-outline" size={14} color={COLORS.primary} />
-              <Text style={styles.chatBtnText}>Chat</Text>
-            </TouchableOpacity>
+            {chatEnabled ? (
+              <TouchableOpacity style={styles.chatBtn} onPress={onChatPress} activeOpacity={0.8}>
+                <Ionicons name="chatbubble" size={14} color="#fff" />
+                <Text style={styles.chatBtnText}>Chat Driver</Text>
+              </TouchableOpacity>
+            ) : booking.status === 'pending' ? (
+              <View style={styles.chatBtnLocked}>
+                <Ionicons name="lock-closed-outline" size={13} color={COLORS.textSecondary} />
+                <Text style={styles.chatBtnLockedText}>Chat unlocks on approval</Text>
+              </View>
+            ) : null}
             {canCancel && (
               <TouchableOpacity style={styles.cancelBtn} onPress={onCancelPress} activeOpacity={0.8}>
                 <Ionicons name="close-outline" size={14} color={COLORS.error} />
@@ -213,6 +222,7 @@ export default function MyBookingsScreen({ navigation }) {
                 bookingId: item._id,
                 driverId: item.rideId?.driverId?._id || item.rideId?.driverId,
                 driverName: item.rideId?.driverId?.name,
+                bookingStatus: item.status,
               })}
               onCancelPress={() => handleCancel(item)}
             />
@@ -338,6 +348,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
   },
   chatBtnText: { fontSize: 11, color: '#fff', fontWeight: '600' },
+  chatBtnLocked: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+  },
+  chatBtnLockedText: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '500' },
   cancelBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: COLORS.error + '12', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,

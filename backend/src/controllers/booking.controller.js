@@ -228,3 +228,19 @@ exports.getBookedSeats = async (req, res, next) => {
     res.json({ seats, totalSeats, availableCount, rideAvailableSeats: ride.availableSeats });
   } catch (err) { next(err); }
 };
+
+// GET /bookings/driver/pending — all pending bookings across driver's rides
+exports.getDriverPendingBookings = async (req, res, next) => {
+  try {
+    const rides = await Ride.find({ driverId: req.user._id }).select('_id');
+    const rideIds = rides.map(r => r._id);
+    const bookings = await Booking.find({
+      rideId: { $in: rideIds },
+      status: 'pending',
+    })
+      .populate('passengerId', 'name profileImage')
+      .populate('rideId', 'origin destination departureTime')
+      .sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) { next(err); }
+};
