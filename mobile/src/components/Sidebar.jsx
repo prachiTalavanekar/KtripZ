@@ -11,22 +11,23 @@ import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 const { width } = Dimensions.get('window');
 const SIDEBAR_WIDTH = width * 0.75;
 
+// screen: stack screen name OR { tab: 'TabName' } for tab switching
 const PASSENGER_MENU = [
-  { icon: 'home-outline', label: 'Home', screen: 'Home' },
-  { icon: 'search-outline', label: 'Search Rides', screen: 'SearchRide' },
-  { icon: 'receipt-outline', label: 'My Bookings', screen: 'MyBookings' },
-  { icon: 'notifications-outline', label: 'Notifications', screen: 'Notifications' },
-  { icon: 'person-outline', label: 'Profile', screen: 'Profile' },
+  { icon: 'home-outline',         label: 'Home',         nav: { tab: 'Home' } },
+  { icon: 'search-outline',       label: 'Search Rides', nav: { tab: 'SearchRide' } },
+  { icon: 'receipt-outline',      label: 'My Bookings',  nav: { tab: 'MyBookings' } },
+  { icon: 'notifications-outline',label: 'Notifications',nav: { tab: 'Notifications' } },
+  { icon: 'person-outline',       label: 'Profile',      nav: { tab: 'Profile' } },
 ];
 
 const PROVIDER_MENU = [
-  { icon: 'home-outline', label: 'Home', screen: 'Dashboard' },
-  { icon: 'bar-chart-outline', label: 'Analytics', screen: 'Analytics' },
-  { icon: 'add-circle-outline', label: 'Create Ride', screen: 'CreateRide' },
-  { icon: 'car-outline', label: 'My Rides', screen: 'MyRides' },
-  { icon: 'car-sport-outline', label: 'Vehicles', screen: 'Vehicles' },
-  { icon: 'notifications-outline', label: 'Notifications', screen: 'Notifications' },
-  { icon: 'person-outline', label: 'Profile', screen: 'Profile' },
+  { icon: 'home-outline',         label: 'Home',         nav: { tab: 'Dashboard' } },
+  { icon: 'bar-chart-outline',    label: 'Analytics',    nav: { stack: 'Analytics' } },
+  { icon: 'add-circle-outline',   label: 'Create Ride',  nav: { tab: 'CreateRide' } },
+  { icon: 'car-outline',          label: 'My Rides',     nav: { tab: 'MyRides' } },
+  { icon: 'car-sport-outline',    label: 'Vehicles',     nav: { tab: 'Vehicles' } },
+  { icon: 'notifications-outline',label: 'Notifications',nav: { tab: 'Notifications' } },
+  { icon: 'person-outline',       label: 'Profile',      nav: { tab: 'Profile' } },
 ];
 
 export default function Sidebar({ visible, onClose, navigation }) {
@@ -51,10 +52,15 @@ export default function Sidebar({ visible, onClose, navigation }) {
 
   const menu = user?.role === 'provider' ? PROVIDER_MENU : PASSENGER_MENU;
 
-  const handleNav = (screen) => {
+  const handleNav = (item) => {
     onClose();
     setTimeout(() => {
-      navigation.navigate(screen);
+      const { nav } = item;
+      if (nav.stack) {
+        navigation.navigateStack(nav.stack);
+      } else if (nav.tab) {
+        navigation.navigateTab(nav.tab);
+      }
     }, 260);
   };
 
@@ -62,7 +68,6 @@ export default function Sidebar({ visible, onClose, navigation }) {
     onClose();
     setTimeout(() => {
       dispatch(logout());
-      // navigateRoot goes to root stack (Login lives there)
       if (navigation.navigateRoot) {
         navigation.navigateRoot('Login');
       } else {
@@ -75,12 +80,10 @@ export default function Sidebar({ visible, onClose, navigation }) {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* Overlay */}
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]} />
       </TouchableWithoutFeedback>
 
-      {/* Drawer */}
       <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
         {/* Header */}
         <View style={styles.drawerHeader}>
@@ -96,10 +99,15 @@ export default function Sidebar({ visible, onClose, navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Menu Items */}
+        {/* Menu */}
         <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
-          {menu.map((item) => (
-            <TouchableOpacity key={item.screen} style={styles.menuItem} onPress={() => handleNav(item.screen)} activeOpacity={0.7}>
+          {menu.map((item, i) => (
+            <TouchableOpacity
+              key={i}
+              style={styles.menuItem}
+              onPress={() => handleNav(item)}
+              activeOpacity={0.7}
+            >
               <View style={styles.menuIconWrap}>
                 <Ionicons name={item.icon} size={20} color={COLORS.primary} />
               </View>
@@ -109,7 +117,7 @@ export default function Sidebar({ visible, onClose, navigation }) {
           ))}
         </ScrollView>
 
-        {/* Footer */}
+        {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
           <Text style={styles.logoutText}>Logout</Text>

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Platform, View, StyleSheet } from 'react-native';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,10 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/passenger/HomeScreen';
 import SearchRideScreen from '../screens/passenger/SearchRideScreen';
+import AllRidesScreen from '../screens/passenger/AllRidesScreen';
 import RideDetailsScreen from '../screens/passenger/RideDetailsScreen';
+import SeatSelectionScreen from '../screens/passenger/SeatSelectionScreen';
+import BookingConfirmationScreen from '../screens/passenger/BookingConfirmationScreen';
 import MyBookingsScreen from '../screens/passenger/MyBookingsScreen';
 import ProviderDashboard from '../screens/provider/ProviderDashboard';
 import CreateRideScreen from '../screens/provider/CreateRideScreen';
@@ -23,6 +26,7 @@ import MyRidesScreen from '../screens/provider/MyRidesScreen';
 import ManageRideScreen from '../screens/provider/ManageRideScreen';
 import VehiclesScreen from '../screens/provider/VehiclesScreen';
 import AnalyticsScreen from '../screens/provider/AnalyticsScreen';
+import StopSelectionScreen from '../screens/provider/StopSelectionScreen';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -60,46 +64,56 @@ function TabIcon({ name, focused }) {
 }
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
-// innerNavRef: ref to the nested stack navigator (PassengerStack / ProviderStack)
-// rootNavigation: root stack navigation (for logout → Login)
-function Shell({ children, innerNavRef, rootNavigation, showBack }) {
+// stackNavRef  → nested stack (for stack screens like Analytics, ManageRide)
+// tabNavRef    → tab navigator (for switching tabs)
+// rootNav      → root stack (for logout → Login)
+function Shell({ children, stackNavRef, tabNavRef, rootNav }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Build a navigation-like object that always uses the inner navigator
-  const innerNav = {
-    navigate: (screen, params) => innerNavRef.current?.navigate(screen, params),
-    goBack: () => innerNavRef.current?.goBack(),
-    // For logout we need root
-    navigateRoot: (screen) => rootNavigation.navigate(screen),
+  const sidebarNav = {
+    // Navigate to a tab screen
+    navigateTab: (tabName) => {
+      tabNavRef.current?.navigate(tabName);
+    },
+    // Navigate to a stack screen (Analytics, ManageRide etc.)
+    navigateStack: (screenName, params) => {
+      stackNavRef.current?.navigate(screenName, params);
+    },
+    // Logout → root Login
+    navigateRoot: (screenName) => {
+      rootNav.navigate(screenName);
+    },
+    goBack: () => stackNavRef.current?.goBack(),
   };
 
   return (
-    <View style={shell.root}>
+    <View style={styles.root}>
       <TopBar
-        showBack={showBack}
-        onBack={() => innerNavRef.current?.goBack()}
+        showBack={false}
+        onBack={() => stackNavRef.current?.goBack()}
         onMenuPress={() => setSidebarOpen(true)}
       />
-      <View style={shell.body}>{children}</View>
+      <View style={styles.body}>{children}</View>
       <Sidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        navigation={innerNav}
+        navigation={sidebarNav}
       />
     </View>
   );
 }
 
-const shell = StyleSheet.create({
+const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
   body: { flex: 1 },
 });
 
-// ── Passenger ─────────────────────────────────────────────────────────────────
-function PassengerTabNav() {
+// ── Passenger Tabs ────────────────────────────────────────────────────────────
+function PassengerTabNav({ tabNavRef }) {
   const tabBarStyle = useTabBarStyle();
   return (
     <Tab.Navigator
+      ref={tabNavRef}
       screenOptions={{
         headerShown: false,
         tabBarStyle,
@@ -122,27 +136,32 @@ function PassengerTabNav() {
   );
 }
 
-function PassengerTabs({ navigation: rootNavigation }) {
-  const innerNavRef = useRef(null);
+function PassengerTabs({ navigation: rootNav }) {
+  const stackNavRef = useRef(null);
+  const tabNavRef = useRef(null);
+
+  const TabNav = () => <PassengerTabNav tabNavRef={tabNavRef} />;
+
   return (
-    <Shell innerNavRef={innerNavRef} rootNavigation={rootNavigation} showBack={false}>
-      <PassengerStack.Navigator
-        ref={innerNavRef}
-        screenOptions={{ headerShown: false }}
-      >
-        <PassengerStack.Screen name="Tabs" component={PassengerTabNav} />
+    <Shell stackNavRef={stackNavRef} tabNavRef={tabNavRef} rootNav={rootNav}>
+      <PassengerStack.Navigator ref={stackNavRef} screenOptions={{ headerShown: false }}>
+        <PassengerStack.Screen name="Tabs" component={TabNav} />
+        <PassengerStack.Screen name="AllRides" component={AllRidesScreen} />
         <PassengerStack.Screen name="RideDetails" component={RideDetailsScreen} />
+        <PassengerStack.Screen name="SeatSelection" component={SeatSelectionScreen} />
+        <PassengerStack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
         <PassengerStack.Screen name="Chat" component={ChatScreen} />
       </PassengerStack.Navigator>
     </Shell>
   );
 }
 
-// ── Provider ──────────────────────────────────────────────────────────────────
-function ProviderTabNav() {
+// ── Provider Tabs ─────────────────────────────────────────────────────────────
+function ProviderTabNav({ tabNavRef }) {
   const tabBarStyle = useTabBarStyle();
   return (
     <Tab.Navigator
+      ref={tabNavRef}
       screenOptions={{
         headerShown: false,
         tabBarStyle,
@@ -165,18 +184,20 @@ function ProviderTabNav() {
   );
 }
 
-function ProviderTabs({ navigation: rootNavigation }) {
-  const innerNavRef = useRef(null);
+function ProviderTabs({ navigation: rootNav }) {
+  const stackNavRef = useRef(null);
+  const tabNavRef = useRef(null);
+
+  const TabNav = () => <ProviderTabNav tabNavRef={tabNavRef} />;
+
   return (
-    <Shell innerNavRef={innerNavRef} rootNavigation={rootNavigation} showBack={false}>
-      <ProviderStack.Navigator
-        ref={innerNavRef}
-        screenOptions={{ headerShown: false }}
-      >
-        <ProviderStack.Screen name="Tabs" component={ProviderTabNav} />
+    <Shell stackNavRef={stackNavRef} tabNavRef={tabNavRef} rootNav={rootNav}>
+      <ProviderStack.Navigator ref={stackNavRef} screenOptions={{ headerShown: false }}>
+        <ProviderStack.Screen name="Tabs" component={TabNav} />
         <ProviderStack.Screen name="ManageRide" component={ManageRideScreen} />
         <ProviderStack.Screen name="Analytics" component={AnalyticsScreen} />
         <ProviderStack.Screen name="Chat" component={ChatScreen} />
+        <ProviderStack.Screen name="StopSelection" component={StopSelectionScreen} />
       </ProviderStack.Navigator>
     </Shell>
   );

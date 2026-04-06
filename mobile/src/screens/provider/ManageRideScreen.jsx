@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import api from '../../services/api';
+import { getSocket } from '../../services/socket';
 import Button from '../../components/Button';
 import { COLORS, SIZES, SHADOWS } from '../../constants/theme';
 
@@ -15,16 +17,36 @@ const STATUS_CONFIG = {
 export default function ManageRideScreen({ route, navigation }) {
   const { rideId } = route.params;
   const [bookings, setBookings] = useState([]);
+  const [rideInfo, setRideInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchBookings = () => {
+  const fetchBookings = useCallback(() => {
     setLoading(true);
-    api.get(`/bookings/ride/${rideId}`)
-      .then(data => { setBookings(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  };
+    Promise.all([
+      api.get(`/bookings/ride/${rideId}`),
+      api.get(`/rides/${rideId}`),
+    ]).then(([bData, rData]) => {
+      setBookings(bData);
+      setRideInfo(rData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [rideId]);
 
-  useEffect(() => { fetchBookings(); }, []);
+  useEffect(() => {
+    fetchBookings();
+    // Listen for real-time booking requests and ride updates
+    const socket = getSocket();
+    socket?.on('booking_request', fetchBookings);
+    socket?.on('ride_updated', (r) => {
+      if (r._id === rideId) setRideInfo(r);
+    });
+    return () => {
+      socket?.off('booking_request', fetchBookings);
+      socket?.off('ride_updated');
+    };
+  }, [rideId]);
+
+  useFocusEffect(useCallback(() => { fetchBookings(); }, [rideId]));
 
   const handleAction = async (bookingId, action) => {
     try {

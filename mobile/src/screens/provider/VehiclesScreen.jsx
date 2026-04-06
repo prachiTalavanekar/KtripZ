@@ -24,9 +24,13 @@ export default function VehiclesScreen({ navigation }) {
     if (!form.model || !form.registrationNumber || !form.seats) {
       return Alert.alert('Missing Fields', 'Please fill model, registration and seats');
     }
+    const totalSeats = Number(form.seats);
+    if (totalSeats < 2) {
+      return Alert.alert('Invalid Seats', 'Minimum 2 seats required (1 driver + 1 passenger)');
+    }
     setLoading(true);
     try {
-      await api.post('/vehicles', { ...form, seats: Number(form.seats) });
+      await api.post('/vehicles', { ...form, seats: totalSeats });
       setShowModal(false);
       setForm({ model: '', registrationNumber: '', seats: '', fuelType: 'petrol', color: '' });
       fetchVehicles();
@@ -66,7 +70,7 @@ export default function VehiclesScreen({ navigation }) {
               <View style={styles.tagsRow}>
                 <View style={styles.tag}>
                   <Ionicons name="people-outline" size={11} color={COLORS.textSecondary} />
-                  <Text style={styles.tagText}>{item.seats} seats</Text>
+                  <Text style={styles.tagText}>{item.seats} seats total · {item.seats - 1} for passengers</Text>
                 </View>
                 <View style={styles.tag}>
                   <Ionicons name={FUEL_ICONS[item.fuelType] || 'flame-outline'} size={11} color={COLORS.textSecondary} />
@@ -109,10 +113,28 @@ export default function VehiclesScreen({ navigation }) {
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <Input label="Vehicle Model *" value={form.model} onChangeText={v => set('model', v)} placeholder="e.g. Honda City" />
               <Input label="Registration Number *" value={form.registrationNumber} onChangeText={v => set('registrationNumber', v)} placeholder="MH01AB1234" autoCapitalize="characters" />
-              <View style={styles.row}>
-                <Input label="Seats *" value={form.seats} onChangeText={v => set('seats', v)} keyboardType="numeric" placeholder="4" style={styles.half} />
-                <Input label="Color" value={form.color} onChangeText={v => set('color', v)} placeholder="White" style={styles.half} />
+
+              {/* Seats — total including driver */}
+              <View style={styles.seatsSection}>
+                <Input
+                  label="Total Seats * (including driver seat)"
+                  value={form.seats}
+                  onChangeText={v => set('seats', v)}
+                  keyboardType="numeric"
+                  placeholder="e.g. 4"
+                />
+                {form.seats && Number(form.seats) >= 2 && (
+                  <View style={styles.seatsBreakdown}>
+                    <Ionicons name="information-circle-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.seatsBreakdownText}>
+                      1 driver seat + {Number(form.seats) - 1} passenger seat(s)
+                    </Text>
+                  </View>
+                )}
               </View>
+
+              <Input label="Color" value={form.color} onChangeText={v => set('color', v)} placeholder="White" />
+
               <Text style={styles.fuelLabel}>Fuel Type</Text>
               <View style={styles.fuelRow}>
                 {FUEL_TYPES.map(f => (
@@ -150,7 +172,7 @@ const styles = StyleSheet.create({
   model: { fontSize: SIZES.base, fontWeight: '700', color: COLORS.text },
   reg: { fontSize: SIZES.sm, color: COLORS.primary, fontWeight: '600', marginTop: 2 },
   tagsRow: { flexDirection: 'row', gap: 8, marginTop: 6, flexWrap: 'wrap' },
-  tag: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: COLORS.background, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#F5F7FA', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   tagText: { fontSize: 11, color: COLORS.textSecondary },
   deleteBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.error + '12', alignItems: 'center', justifyContent: 'center' },
   empty: { alignItems: 'center', marginTop: 80, gap: 12 },
@@ -161,8 +183,9 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '88%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: SIZES.xl, fontWeight: '700', color: COLORS.text },
-  row: { flexDirection: 'row', gap: 12 },
-  half: { flex: 1 },
+  seatsSection: { marginBottom: 4 },
+  seatsBreakdown: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.primary + '10', padding: 10, borderRadius: 8, marginTop: -8, marginBottom: 12 },
+  seatsBreakdownText: { fontSize: SIZES.xs, color: COLORS.primary, fontWeight: '600' },
   fuelLabel: { fontSize: SIZES.sm, fontWeight: '600', color: COLORS.text, marginBottom: 10 },
   fuelRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   fuelBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border },

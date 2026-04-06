@@ -1,138 +1,223 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { useDispatch } from 'react-redux';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Alert, Linking, Share, ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createBooking } from '../../store/slices/bookingSlice';
-import api from '../../services/api';
-import Button from '../../components/Button';
-import { COLORS, SIZES, SHADOWS } from '../../constants/theme';
 import { format } from 'date-fns';
+import api from '../../services/api';
+import { COLORS, SIZES, SHADOWS } from '../../constants/theme';
+
+const GST_4W = 0.10;
+const GST_2W = 0.05;
+const PLATFORM_FEE = 1;
+
+function is2Wheeler(vehicle) {
+  const model = (vehicle?.model || '').toLowerCase();
+  return vehicle?.seats <= 2 || model.includes('bike') || model.includes('scooter') || model.includes('activa');
+}
 
 export default function RideDetailsScreen({ route, navigation }) {
   const { rideId } = route.params;
-  const dispatch = useDispatch();
   const [ride, setRide] = useState(null);
-  const [seats, setSeats] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get(`/rides/${rideId}`).then(setRide).catch(console.error);
+    api.get(`/rides/${rideId}`)
+      .then(data => { setRide(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [rideId]);
 
-  const handleBook = async () => {
-    setLoading(true);
-    const result = await dispatch(createBooking({ rideId, seatsBooked: seats }));
-    setLoading(false);
-    if (result.meta.requestStatus === 'fulfilled') {
-      Alert.alert('Booking Sent', 'Waiting for driver approval', [
-        { text: 'View Bookings', onPress: () => navigation.navigate('MyBookings') },
-      ]);
-    } else {
-      Alert.alert('Error', result.payload);
-    }
-  };
+  if (loading) return (
+    <View style={styles.center}>
+      <ActivityIndicator color={COLORS.primary} size="large" />
+    </View>
+  );
 
-  if (!ride) {
-    return (
-      <View style={styles.root}>
-        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 60 }} />
-      </View>
-    );
-  }
+  if (!ride) return (
+    <View style={styles.center}>
+      <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+      <Text style={{ color: COLORS.error, marginTop: 8 }}>Ride not found</Text>
+    </View>
+  );
 
   const driver = ride.driverId;
   const vehicle = ride.vehicleId;
+  const twoW = is2Wheeler(vehicle);
+  const gstRate = twoW ? GST_2W : GST_4W;
+  const basePrice = ride.pricePerSeat;
+  const gst = Math.round(basePrice * gstRate);
+  const total = basePrice + gst + PLATFORM_FEE;
+
+  const handleCall = () => {
+    if (!driver?.phone) return Alert.alert('Not available', 'Driver phone not available');
+    Linking.openURL(`tel:${driver.phone}`);
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `🚗 KTripZ Ride\n${ride.origin?.name} → ${ride.destination?.name}\n📅 ${format(new Date(ride.departureTime), 'dd MMM yyyy, hh:mm a')}\n💺 ${ride.availableSeats} seats · ₹${ride.pricePerSeat}/seat\nBook now on KTripZ!`,
+      });
+    } catch {}
+  };
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Route Card */}
-        <View style={styles.card}>
+        {/* ── Route Card ── */}
+        <View style={styles.routeCard}>
           <View style={styles.routeRow}>
-            <View style={styles.routePoints}>
+            <View style={styles.routeLeft}>
               <View style={styles.dotGreen} />
-              <View style={styles.routeLine} />
+              <View style={styles.routeVLine} />
               <View style={styles.dotBlue} />
             </View>
-            <View style={styles.routeNames}>
-              <Text style={styles.cityText}>{ride.origin?.name}</Text>
-              <Text style={styles.cityText}>{ride.destination?.name}</Text>
+            <View style={styles.routeRight}>
+              <View style={styles.routeStop}>
+                <Text style={styles.routeStopLabel}>FROM</Text>
+                <Text style={styles.routeStopName}>{ride.origin?.name}</Text>
+              </View>
+              <View style={styles.routeStopGap} />
+              <View style={styles.routeStop}>
+                <Text style={styles.routeStopLabel}>TO</Text>
+                <Text style={styles.routeStopName}>{ride.destination?.name}</Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.timeRow}>
-            <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.timeText}>
-              {format(new Date(ride.departureTime), 'EEEE, dd MMM yyyy • hh:mm a')}
-            </Text>
+            <View style={styles.routeMeta}>
+              <View style={styles.routeMetaItem}>
+                <Ionicons name="calendar-outline" size={13} color={COLORS.textSecondary} />
+                <Text style={styles.routeMetaText}>{format(new Date(ride.departureTime), 'dd MMM yyyy')}</Text>
+              </View>
+              <View style={styles.routeMetaItem}>
+                <Ionicons name="time-outline" size={13} color={COLORS.textSecondary} />
+                <Text style={styles.routeMetaText}>{format(new Date(ride.departureTime), 'hh:mm a')}</Text>
+              </View>
+              <View style={styles.routeMetaItem}>
+                <Ionicons name="people-outline" size={13} color={COLORS.textSecondary} />
+                <Text style={styles.routeMetaText}>{ride.availableSeats} seats left</Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Driver Card */}
+        {/* ── Driver ── */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Driver</Text>
           <View style={styles.driverRow}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarLetter}>{driver?.name?.[0]?.toUpperCase()}</Text>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{driver?.name?.[0]?.toUpperCase()}</Text>
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.driverInfo}>
               <Text style={styles.driverName}>{driver?.name}</Text>
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={12} color="#F59E0B" />
+                <Ionicons name="star" size={13} color="#F59E0B" />
                 <Text style={styles.ratingText}>{driver?.rating || 'New'}</Text>
-                {vehicle && <Text style={styles.vehicleText}>· {vehicle.model}</Text>}
               </View>
             </View>
-            <TouchableOpacity style={styles.chatBtn}
-              onPress={() => navigation.navigate('Chat', { bookingId: null, driverId: driver?._id, driverName: driver?.name })}>
-              <Ionicons name="chatbubble-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.chatBtnText}>Chat</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Trip Info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Trip Info</Text>
-          {[
-            { icon: 'cash-outline', label: 'Price per seat', value: `₹${ride.pricePerSeat}` },
-            { icon: 'people-outline', label: 'Available seats', value: ride.availableSeats },
-            ...(ride.distance ? [{ icon: 'map-outline', label: 'Distance', value: `${(ride.distance / 1000).toFixed(0)} km` }] : []),
-            ...(ride.duration ? [{ icon: 'time-outline', label: 'Duration', value: `${Math.round(ride.duration / 60)} mins` }] : []),
-          ].map((item, i) => (
-            <View key={i} style={styles.infoRow}>
-              <Ionicons name={item.icon} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.infoLabel}>{item.label}</Text>
-              <Text style={styles.infoValue}>{item.value}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Seat Selector */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Select Seats</Text>
-          <View style={styles.seatsRow}>
-            {[1, 2, 3, 4].map(n => (
-              <TouchableOpacity
-                key={n}
-                style={[styles.seatBtn, seats === n && styles.seatBtnActive, n > ride.availableSeats && styles.seatBtnDisabled]}
-                onPress={() => n <= ride.availableSeats && setSeats(n)}
-              >
-                <Ionicons name="person" size={14} color={seats === n ? '#fff' : n > ride.availableSeats ? COLORS.border : COLORS.textSecondary} />
-                <Text style={[styles.seatNum, seats === n && styles.seatNumActive]}>{n}</Text>
+            <View style={styles.driverBtns}>
+              <TouchableOpacity style={styles.iconBtn} onPress={handleCall}>
+                <Ionicons name="call" size={18} color={COLORS.primary} />
               </TouchableOpacity>
-            ))}
+              <TouchableOpacity style={styles.iconBtn}
+                onPress={() => navigation.navigate('Chat', { bookingId: null, driverId: driver?._id, driverName: driver?.name })}>
+                <Ionicons name="chatbubble" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconBtn} onPress={handleShare}>
+                <Ionicons name="share-social" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
+
+        {/* ── Vehicle ── */}
+        {vehicle && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Vehicle</Text>
+            <View style={styles.vehicleRow}>
+              <View style={styles.vehicleIcon}>
+                <Ionicons name={twoW ? 'bicycle' : 'car-sport'} size={26} color={COLORS.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.vehicleModel}>{vehicle.model}</Text>
+                <View style={styles.vehicleTags}>
+                  <View style={styles.tag}>
+                    <Ionicons name="card-outline" size={11} color={COLORS.textSecondary} />
+                    <Text style={styles.tagText}>{vehicle.registrationNumber}</Text>
+                  </View>
+                  <View style={styles.tag}>
+                    <Ionicons name="people-outline" size={11} color={COLORS.textSecondary} />
+                    <Text style={styles.tagText}>{ride.availableSeats} seats available</Text>
+                  </View>
+                  {vehicle.color ? (
+                    <View style={styles.tag}>
+                      <Ionicons name="color-palette-outline" size={11} color={COLORS.textSecondary} />
+                      <Text style={styles.tagText}>{vehicle.color}</Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.tag}>
+                    <Ionicons name="flame-outline" size={11} color={COLORS.textSecondary} />
+                    <Text style={styles.tagText}>{vehicle.fuelType}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ── Price Breakdown ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Price Breakdown</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>Base Price</Text>
+            <Text style={styles.priceValue}>₹{basePrice}</Text>
+          </View>
+          <View style={styles.priceDivider} />
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>GST ({twoW ? '5%' : '10%'} — {twoW ? '2-Wheeler' : '4-Wheeler'})</Text>
+            <Text style={styles.priceValue}>₹{gst}</Text>
+          </View>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>Platform Fee</Text>
+            <Text style={styles.priceValue}>₹{PLATFORM_FEE}</Text>
+          </View>
+          <View style={styles.priceTotalLine} />
+          <View style={styles.priceRow}>
+            <Text style={styles.priceTotalLabel}>Total per Seat</Text>
+            <Text style={styles.priceTotalValue}>₹{total}</Text>
+          </View>
+        </View>
+
+        {/* ── Notes ── */}
+        {ride.description ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Driver Notes</Text>
+            <Text style={styles.notes}>{ride.description}</Text>
+          </View>
+        ) : null}
+
       </ScrollView>
 
-      {/* Footer */}
+      {/* ── Footer CTA ── */}
       <View style={styles.footer}>
         <View>
-          <Text style={styles.totalLabel}>Total Amount</Text>
-          <Text style={styles.totalAmount}>₹{ride.pricePerSeat * seats}</Text>
+          <Text style={styles.footerLabel}>Total per seat</Text>
+          <Text style={styles.footerPrice}>₹{total}</Text>
         </View>
-        <Button title="Book Now" onPress={handleBook} loading={loading} style={styles.bookBtn} />
+        <TouchableOpacity
+          style={[styles.ctaBtn, ride.availableSeats === 0 && styles.ctaBtnDisabled]}
+          disabled={ride.availableSeats === 0}
+          onPress={() => navigation.navigate('SeatSelection', {
+            ride, pricePerSeat: total, basePrice, gst, platformFee: PLATFORM_FEE,
+          })}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="car-sport" size={18} color="#fff" />
+          <Text style={styles.ctaBtnText}>
+            {ride.availableSeats === 0 ? 'Fully Booked' : 'Select Your Seat'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -140,43 +225,73 @@ export default function RideDetailsScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F5F7FA' },
-  content: { padding: 16, gap: 12, paddingBottom: 24 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { padding: 16, paddingBottom: 100, gap: 12 },
+
+  // Route card
+  routeCard: { backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 16, ...SHADOWS.card },
+  routeRow: { flexDirection: 'row', gap: 12 },
+  routeLeft: { alignItems: 'center', paddingTop: 4 },
+  dotGreen: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#10B981' },
+  routeVLine: { width: 2, flex: 1, backgroundColor: COLORS.border, marginVertical: 4 },
+  dotBlue: { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.primary },
+  routeRight: { flex: 1, justifyContent: 'space-between' },
+  routeStop: {},
+  routeStopGap: { height: 12 },
+  routeStopLabel: { fontSize: 10, color: COLORS.textSecondary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  routeStopName: { fontSize: SIZES.lg, fontWeight: '700', color: COLORS.text, marginTop: 2 },
+  routeMeta: { gap: 6, justifyContent: 'center' },
+  routeMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  routeMetaText: { fontSize: 11, color: COLORS.textSecondary },
+
+  // Cards
   card: { backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 16, ...SHADOWS.card },
   cardTitle: { fontSize: SIZES.base, fontWeight: '700', color: COLORS.text, marginBottom: 12 },
 
-  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  routePoints: { alignItems: 'center', gap: 2 },
-  dotGreen: { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.success },
-  routeLine: { width: 2, height: 28, backgroundColor: COLORS.border },
-  dotBlue: { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.primary },
-  routeNames: { flex: 1, justifyContent: 'space-between', gap: 18 },
-  cityText: { fontSize: SIZES.lg, fontWeight: '700', color: COLORS.text },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  timeText: { fontSize: SIZES.sm, color: COLORS.textSecondary },
-
+  // Driver
   driverRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
-  avatarLetter: { color: '#fff', fontSize: SIZES.xl, fontWeight: '700' },
-  driverName: { fontSize: SIZES.base, fontWeight: '600', color: COLORS.text },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: SIZES.xl, fontWeight: '800' },
+  driverInfo: { flex: 1 },
+  driverName: { fontSize: SIZES.base, fontWeight: '700', color: COLORS.text },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   ratingText: { fontSize: SIZES.sm, color: COLORS.textSecondary },
-  vehicleText: { fontSize: SIZES.sm, color: COLORS.textSecondary },
-  chatBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary + '12', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
-  chatBtnText: { fontSize: SIZES.sm, color: COLORS.primary, fontWeight: '600' },
+  driverBtns: { flexDirection: 'row', gap: 8 },
+  iconBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: COLORS.primary + '12', alignItems: 'center', justifyContent: 'center' },
 
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  infoLabel: { flex: 1, color: COLORS.textSecondary, fontSize: SIZES.sm },
-  infoValue: { color: COLORS.text, fontWeight: '600', fontSize: SIZES.sm },
+  // Vehicle
+  vehicleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  vehicleIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: COLORS.primary + '12', alignItems: 'center', justifyContent: 'center' },
+  vehicleModel: { fontSize: SIZES.base, fontWeight: '700', color: COLORS.text, marginBottom: 8 },
+  vehicleTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#F5F7FA', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  tagText: { fontSize: 11, color: COLORS.textSecondary },
 
-  seatsRow: { flexDirection: 'row', gap: 10 },
-  seatBtn: { flex: 1, height: 52, borderRadius: SIZES.radius, borderWidth: 1.5, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  seatBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  seatBtnDisabled: { opacity: 0.35 },
-  seatNum: { fontSize: SIZES.sm, fontWeight: '700', color: COLORS.textSecondary },
-  seatNumActive: { color: '#fff' },
+  // Price
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
+  priceLabel: { fontSize: SIZES.sm, color: COLORS.textSecondary },
+  priceValue: { fontSize: SIZES.sm, color: COLORS.text, fontWeight: '500' },
+  priceDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 2 },
+  priceTotalLine: { height: 1.5, backgroundColor: COLORS.primary + '30', marginVertical: 6 },
+  priceTotalLabel: { fontSize: SIZES.base, fontWeight: '800', color: COLORS.text },
+  priceTotalValue: { fontSize: SIZES.base, fontWeight: '800', color: COLORS.primary },
 
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.border },
-  totalLabel: { fontSize: SIZES.xs, color: COLORS.textSecondary },
-  totalAmount: { fontSize: SIZES.xxl, fontWeight: '800', color: COLORS.primary },
-  bookBtn: { flex: 1, marginLeft: 16 },
+  notes: { fontSize: SIZES.sm, color: COLORS.textSecondary, lineHeight: 20 },
+
+  // Footer
+  footer: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.card, padding: 16, paddingBottom: 24,
+    borderTopWidth: 1, borderTopColor: COLORS.border, elevation: 10,
+  },
+  footerLabel: { fontSize: SIZES.xs, color: COLORS.textSecondary },
+  footerPrice: { fontSize: SIZES.xxl, fontWeight: '800', color: COLORS.primary },
+  ctaBtn: {
+    flex: 1, marginLeft: 16, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius, paddingVertical: 14,
+  },
+  ctaBtnDisabled: { backgroundColor: COLORS.textSecondary },
+  ctaBtnText: { color: '#fff', fontWeight: '700', fontSize: SIZES.base },
 });

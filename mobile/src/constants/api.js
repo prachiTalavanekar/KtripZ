@@ -1,5 +1,5 @@
-export const BASE_URL = 'http://10.131.152.105:5000/api';
-export const SOCKET_URL = 'http://10.131.152.105:5000';
+export const BASE_URL = 'http://172.16.0.93:5000/api';
+export const SOCKET_URL = 'http://172.16.0.93:5000';
 
 export const ENDPOINTS = {
   REGISTER: '/auth/register',

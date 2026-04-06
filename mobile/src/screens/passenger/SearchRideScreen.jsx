@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, FlatList,
+  ActivityIndicator, TouchableOpacity,
+} from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSelector as useReduxSelector } from 'react-redux';
 import { searchRides, setSelectedRide } from '../../store/slices/rideSlice';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -11,16 +16,42 @@ import { COLORS, SIZES } from '../../constants/theme';
 export default function SearchRideScreen({ navigation, route }) {
   const dispatch = useDispatch();
   const { searchResults, loading } = useSelector(s => s.rides);
-  const [form, setForm] = useState({
-    origin: route.params?.origin || '',
-    destination: route.params?.destination || '',
-    date: new Date().toISOString().split('T')[0],
-    seats: '1',
-  });
+  const { user } = useSelector(s => s.auth);
+  const [searched, setSearched] = useState(false);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [origin, setOrigin] = useState(route.params?.origin || '');
+  const [destination, setDestination] = useState(route.params?.destination || '');
+  const [date, setDate] = useState('');       // optional
+  const [seats, setSeats] = useState('');     // optional
+  const [errors, setErrors] = useState({});
 
-  const handleSearch = () => dispatch(searchRides(form));
+  const validate = () => {
+    const e = {};
+    if (!origin.trim())      e.origin = 'Enter origin';
+    if (!destination.trim()) e.destination = 'Enter destination';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSearch = async () => {
+    if (!validate()) return;
+    const params = { origin: origin.trim(), destination: destination.trim() };
+    if (date.trim())  params.date = date.trim();
+    if (seats.trim()) params.seats = seats.trim();
+    dispatch(searchRides(params));
+    setSearched(true);
+
+    // Save to frequent routes
+    try {
+      const key = `freq_${user?._id}`;
+      const stored = await AsyncStorage.getItem(key);
+      const routes = stored ? JSON.parse(stored) : [];
+      const from = origin.trim(), to = destination.trim();
+      if (!routes.find(r => r.origin === from && r.destination === to)) {
+        await AsyncStorage.setItem(key, JSON.stringify([{ origin: from, destination: to }, ...routes].slice(0, 8)));
+      }
+    } catch {}
+  };
 
   const handleSelect = (ride) => {
     dispatch(setSelectedRide(ride));
@@ -29,57 +60,105 @@ export default function SearchRideScreen({ navigation, route }) {
 
   return (
     <View style={styles.root}>
-      <View style={styles.formBox}>
-        <View style={styles.inputRow}>
-          <Ionicons name="location-outline" size={18} color={COLORS.primary} style={styles.inputIcon} />
-          <Input placeholder="From city" value={form.origin} onChangeText={v => set('origin', v)} style={styles.inputFlex} />
-        </View>
-        <View style={styles.inputRow}>
-          <Ionicons name="navigate-outline" size={18} color={COLORS.accent} style={styles.inputIcon} />
-          <Input placeholder="To city" value={form.destination} onChangeText={v => set('destination', v)} style={styles.inputFlex} />
-        </View>
-        <View style={styles.rowTwo}>
-          <View style={[styles.inputRow, { flex: 1 }]}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} style={styles.inputIcon} />
-            <Input placeholder="YYYY-MM-DD" value={form.date} onChangeText={v => set('date', v)} style={styles.inputFlex} />
+      {/* Search Form */}
+      <View style={styles.form}>
+        <View style={styles.routeRow}>
+          <View style={styles.dots}>
+            <View style={styles.dotG} />
+            <View style={styles.dotLine} />
+            <View style={styles.dotB} />
           </View>
-          <View style={[styles.inputRow, { width: 90 }]}>
-            <Ionicons name="people-outline" size={16} color={COLORS.textSecondary} style={styles.inputIcon} />
-            <Input placeholder="1" value={form.seats} onChangeText={v => set('seats', v)} keyboardType="numeric" style={styles.inputFlex} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Input
+              placeholder="From — city or stop *"
+              value={origin}
+              onChangeText={v => { setOrigin(v); setErrors(e => ({ ...e, origin: null })); }}
+              error={errors.origin}
+              style={styles.inputFlat}
+            />
+            <Input
+              placeholder="To — city or stop *"
+              value={destination}
+              onChangeText={v => { setDestination(v); setErrors(e => ({ ...e, destination: null })); }}
+              error={errors.destination}
+              style={styles.inputFlat}
+            />
           </View>
         </View>
+
+        {/* Optional filters */}
+        <View style={styles.optRow}>
+          <View style={styles.optField}>
+            <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} style={styles.optIcon} />
+            <Input
+              placeholder="Date (optional)"
+              value={date}
+              onChangeText={setDate}
+              keyboardType="numeric"
+              style={styles.optInput}
+            />
+          </View>
+          <View style={styles.optField}>
+            <Ionicons name="people-outline" size={14} color={COLORS.textSecondary} style={styles.optIcon} />
+            <Input
+              placeholder="Seats (optional)"
+              value={seats}
+              onChangeText={setSeats}
+              keyboardType="numeric"
+              style={styles.optInput}
+            />
+          </View>
+        </View>
+
         <Button title="Search Rides" onPress={handleSearch} loading={loading} />
       </View>
 
-      {loading
-        ? <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
-        : <FlatList
-            data={searchResults}
-            keyExtractor={i => i._id}
-            contentContainerStyle={styles.list}
-            renderItem={({ item }) => <RideCard ride={item} onPress={() => handleSelect(item)} />}
-            ListEmptyComponent={
+      {/* Results */}
+      {loading ? (
+        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={searchResults}
+          keyExtractor={i => i._id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => <RideCard ride={item} onPress={() => handleSelect(item)} />}
+          ListEmptyComponent={
+            searched ? (
               <View style={styles.empty}>
                 <Ionicons name="search-outline" size={48} color={COLORS.border} />
-                <Text style={styles.emptyText}>No rides found</Text>
-                <Text style={styles.emptySubText}>Try different dates or routes</Text>
+                <Text style={styles.emptyTitle}>No rides found</Text>
+                <Text style={styles.emptySub}>Try different source or destination</Text>
               </View>
-            }
-          />
-      }
+            ) : (
+              <View style={styles.empty}>
+                <Ionicons name="car-outline" size={48} color={COLORS.border} />
+                <Text style={styles.emptyTitle}>Search for rides</Text>
+                <Text style={styles.emptySub}>Enter source and destination above</Text>
+              </View>
+            )
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F5F7FA' },
-  formBox: { backgroundColor: COLORS.card, padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  inputIcon: { marginRight: 8, marginTop: 4 },
-  inputFlex: { flex: 1, marginBottom: 0 },
-  rowTwo: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  form: { backgroundColor: '#fff', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  routeRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  dots: { alignItems: 'center', paddingTop: 14 },
+  dotG: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#10B981' },
+  dotLine: { width: 1.5, height: 28, backgroundColor: '#E5E7EB', marginVertical: 3 },
+  dotB: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#0A1F44' },
+  inputFlat: { marginBottom: 4 },
+  optRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  optField: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  optIcon: { marginRight: 4, marginTop: 4 },
+  optInput: { flex: 1, marginBottom: 0 },
   list: { padding: 16 },
   empty: { alignItems: 'center', marginTop: 60, gap: 8 },
-  emptyText: { fontSize: SIZES.lg, fontWeight: '600', color: COLORS.textSecondary },
-  emptySubText: { fontSize: SIZES.sm, color: COLORS.textSecondary },
+  emptyTitle: { fontSize: SIZES.lg, fontWeight: '600', color: '#6B7280' },
+  emptySub: { fontSize: SIZES.sm, color: '#6B7280' },
 });

@@ -10,19 +10,50 @@ exports.createRide = async (req, res, next) => {
 
 exports.searchRides = async (req, res, next) => {
   try {
-    const { origin, destination, date, seats = 1 } = req.query;
-    const start = new Date(date);
-    const end = new Date(date);
-    end.setDate(end.getDate() + 1);
+    const { origin, destination, date, seats } = req.query;
+    if (!origin || !destination) return res.status(400).json({ message: 'origin and destination are required' });
 
-    const rides = await Ride.find({
-      'origin.name': { $regex: origin, $options: 'i' },
-      'destination.name': { $regex: destination, $options: 'i' },
-      departureTime: { $gte: start, $lt: end },
-      availableSeats: { $gte: Number(seats) },
+    const filter = {
+      'origin.name': { $regex: origin.trim(), $options: 'i' },
+      'destination.name': { $regex: destination.trim(), $options: 'i' },
       status: 'scheduled',
-    }).populate('driverId', 'name profileImage rating').populate('vehicleId');
+      departureTime: { $gte: new Date() },
+    };
 
+    // Date is optional — if provided filter by that day
+    if (date) {
+      const start = new Date(date);
+      const end = new Date(date);
+      end.setDate(end.getDate() + 1);
+      filter.departureTime = { $gte: start, $lt: end };
+    }
+
+    // Seats optional
+    if (seats && Number(seats) > 0) {
+      filter.availableSeats = { $gte: Number(seats) };
+    }
+
+    const rides = await Ride.find(filter)
+      .sort({ departureTime: 1 })
+      .populate('driverId', 'name profileImage rating')
+      .populate('vehicleId');
+
+    res.json(rides);
+  } catch (err) { next(err); }
+};
+
+// GET /api/rides/upcoming?limit=5 — top upcoming rides sorted by time
+exports.getUpcomingRides = async (req, res, next) => {
+  try {
+    const limit = Number(req.query.limit) || 5;
+    const rides = await Ride.find({
+      status: 'scheduled',
+      departureTime: { $gte: new Date() },
+    })
+      .sort({ departureTime: 1 })
+      .limit(limit)
+      .populate('driverId', 'name profileImage rating')
+      .populate('vehicleId');
     res.json(rides);
   } catch (err) { next(err); }
 };
@@ -67,6 +98,27 @@ exports.cancelRide = async (req, res, next) => {
     if (!ride) return res.status(404).json({ message: 'Ride not found' });
     getIO().to(`ride:${ride._id}`).emit('ride_updated', { ...ride.toObject(), status: 'cancelled' });
     res.json({ message: 'Ride cancelled' });
+  } catch (err) { next(err); }
+};
+
+exports.completeRide = async (req, res, next) => {
+  try {
+    const ride = await Ride.findOneAndUpdate(
+      { _id: req.params.id, driverId: req.user._id },
+      { status: 'completed' },
+      { new: true }
+    );
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+    getIO().to(`ride:${ride._id}`).emit('ride_updated', { ...ride.toObject(), status: 'completed' });
+    res.json({ message: 'Ride marked as completed' });
+  } catch (err) { next(err); }
+};
+
+exports.deleteRide = async (req, res, next) => {
+  try {
+    const ride = await Ride.findOneAndDelete({ _id: req.params.id, driverId: req.user._id });
+    if (!ride) return res.status(404).json({ message: 'Ride not found' });
+    res.json({ message: 'Ride deleted' });
   } catch (err) { next(err); }
 };
 

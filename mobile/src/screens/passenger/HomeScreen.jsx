@@ -1,107 +1,233 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  FlatList, Animated, Easing, ActivityIndicator,
+} from 'react-native';
 import { useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import api from '../../services/api';
 import { COLORS, SIZES, SHADOWS } from '../../constants/theme';
+import { format } from 'date-fns';
 
 const QUICK_ACTIONS = [
-  { icon: 'search', label: 'Find Ride', screen: 'SearchRide' },
-  { icon: 'receipt', label: 'Bookings', screen: 'MyBookings' },
-  { icon: 'notifications', label: 'Alerts', screen: 'Notifications' },
-  { icon: 'person', label: 'Profile', screen: 'Profile' },
+  { icon: 'search',        label: 'Find Ride',  screen: 'SearchRide' },
+  { icon: 'receipt',       label: 'Bookings',   screen: 'MyBookings' },
+  { icon: 'notifications', label: 'Alerts',     screen: 'Notifications' },
+  { icon: 'person',        label: 'Profile',    screen: 'Profile' },
 ];
 
-const POPULAR_ROUTES = [
-  { from: 'Mumbai', to: 'Pune', price: '₹350' },
-  { from: 'Delhi', to: 'Agra', price: '₹450' },
-  { from: 'Bangalore', to: 'Mysore', price: '₹280' },
-];
+function Marquee({ routes, onPress }) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const containerW = useRef(0);
+  const contentW = useRef(0);
+
+  const start = () => {
+    if (!contentW.current || !containerW.current) return;
+    translateX.setValue(containerW.current);
+    Animated.loop(
+      Animated.timing(translateX, {
+        toValue: -contentW.current,
+        duration: contentW.current * 20,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  };
+
+  useEffect(() => { start(); }, [routes]);
+  if (!routes.length) return null;
+
+  return (
+    <View style={mq.wrapper} onLayout={e => { containerW.current = e.nativeEvent.layout.width; start(); }}>
+      <View style={mq.labelRow}>
+        <Ionicons name="trending-up" size={12} color={COLORS.primary} />
+        <Text style={mq.label}>YOUR ROUTES</Text>
+      </View>
+      <View style={mq.track}>
+        <Animated.View
+          style={{ flexDirection: 'row', transform: [{ translateX }] }}
+          onLayout={e => { contentW.current = e.nativeEvent.layout.width; start(); }}
+        >
+          {[...routes, ...routes].map((r, i) => (
+            <TouchableOpacity key={i} style={mq.chip}
+              onPress={() => onPress(r.origin, r.destination)} activeOpacity={0.8}>
+              <Ionicons name="location-outline" size={11} color={COLORS.primary} />
+              <Text style={mq.chipText}>{r.origin} → {r.destination}</Text>
+            </TouchableOpacity>
+          ))}
+        </Animated.View>
+      </View>
+    </View>
+  );
+}
+
+const mq = StyleSheet.create({
+  wrapper: { backgroundColor: COLORS.card, paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  label: { fontSize: 10, fontWeight: '700', color: COLORS.primary, letterSpacing: 0.8 },
+  track: { overflow: 'hidden' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary + '12', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, marginRight: 10 },
+  chipText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
+});
+
+function UpcomingCard({ ride, onPress }) {
+  return (
+    <TouchableOpacity style={uc.card} onPress={onPress} activeOpacity={0.85}>
+      <View style={uc.top}>
+        <View style={uc.row}><View style={uc.dotG} /><Text style={uc.origin} numberOfLines={1}>{ride.origin?.name}</Text></View>
+        <View style={uc.vline} />
+        <View style={uc.row}><View style={uc.dotB} /><Text style={uc.dest} numberOfLines={1}>{ride.destination?.name}</Text></View>
+      </View>
+      <View style={uc.bottom}>
+        <View style={uc.meta}><Ionicons name="calendar-outline" size={11} color={COLORS.textSecondary} /><Text style={uc.metaT}>{format(new Date(ride.departureTime), 'dd MMM')}</Text></View>
+        <View style={uc.meta}><Ionicons name="time-outline" size={11} color={COLORS.textSecondary} /><Text style={uc.metaT}>{format(new Date(ride.departureTime), 'hh:mm a')}</Text></View>
+        <View style={uc.meta}><Ionicons name="people-outline" size={11} color={COLORS.textSecondary} /><Text style={uc.metaT}>{ride.availableSeats}</Text></View>
+        <Text style={uc.price}>Rs.{ride.pricePerSeat}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const uc = StyleSheet.create({
+  card: { width: 200, backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 14, marginRight: 12, ...SHADOWS.card, borderTopWidth: 3, borderTopColor: COLORS.primary },
+  top: { marginBottom: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dotG: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
+  dotB: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
+  vline: { width: 1.5, height: 14, backgroundColor: COLORS.border, marginLeft: 3, marginVertical: 2 },
+  origin: { fontSize: SIZES.sm, fontWeight: '700', color: COLORS.text, flex: 1 },
+  dest: { fontSize: SIZES.sm, fontWeight: '600', color: COLORS.textSecondary, flex: 1 },
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  metaT: { fontSize: 10, color: COLORS.textSecondary },
+  price: { marginLeft: 'auto', fontSize: SIZES.base, fontWeight: '800', color: COLORS.primary },
+});
 
 export default function HomeScreen({ navigation }) {
   const { user } = useSelector(s => s.auth);
+  const [upcomingRides, setUpcomingRides] = useState([]);
+  const [ridesLoading, setRidesLoading] = useState(true);
+  const [frequentRoutes, setFrequentRoutes] = useState([]);
+
+  const loadData = async () => {
+    setRidesLoading(true);
+    try {
+      const data = await api.get('/rides/upcoming?limit=5');
+      setUpcomingRides(Array.isArray(data) ? data : []);
+    } catch { setUpcomingRides([]); }
+    setRidesLoading(false);
+    try {
+      const stored = await AsyncStorage.getItem(`freq_${user?._id}`);
+      if (stored) setFrequentRoutes(JSON.parse(stored));
+    } catch {}
+  };
+
+  useFocusEffect(useCallback(() => { loadData(); }, []));
+
+  const handleSearch = async (from, to) => {
+    if (!from || !to) return;
+    try {
+      const key = `freq_${user?._id}`;
+      const stored = await AsyncStorage.getItem(key);
+      const routes = stored ? JSON.parse(stored) : [];
+      if (!routes.find(r => r.origin === from && r.destination === to)) {
+        const updated = [{ origin: from, destination: to }, ...routes].slice(0, 8);
+        await AsyncStorage.setItem(key, JSON.stringify(updated));
+        setFrequentRoutes(updated);
+      }
+    } catch {}
+    navigation.navigate('SearchRide', { origin: from, destination: to });
+  };
 
   return (
-    <View style={styles.root}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Hero */}
-        <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} style={styles.hero}>
-          <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0]} 👋</Text>
-          <Text style={styles.heroSub}>Where are you headed today?</Text>
-          <TouchableOpacity style={styles.searchBar} onPress={() => navigation.navigate('SearchRide')} activeOpacity={0.85}>
+    <View style={s.root}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+        <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} style={s.hero}>
+          <Text style={s.greeting}>Hello, {user?.name?.split(' ')[0]} </Text>
+          <Text style={s.heroSub}>Where are you headed today?</Text>
+          <TouchableOpacity style={s.searchBar}
+            onPress={() => navigation.navigate('SearchRide')} activeOpacity={0.85}>
             <Ionicons name="search-outline" size={18} color={COLORS.textSecondary} />
-            <Text style={styles.searchText}>Search rides...</Text>
+            <Text style={s.searchText}>Search by source and destination...</Text>
           </TouchableOpacity>
         </LinearGradient>
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsRow}>
+        {frequentRoutes.length > 0 && (
+          <Marquee routes={frequentRoutes} onPress={(f, t) => handleSearch(f, t)} />
+        )}
+
+        <View style={s.section}>
+          <View style={s.actionsRow}>
             {QUICK_ACTIONS.map(a => (
-              <TouchableOpacity key={a.label} style={styles.actionCard} onPress={() => navigation.navigate(a.screen)} activeOpacity={0.8}>
-                <View style={styles.actionIconWrap}>
+              <TouchableOpacity key={a.label} style={s.actionCard}
+                onPress={() => navigation.navigate(a.screen)} activeOpacity={0.8}>
+                <View style={s.actionIcon}>
                   <Ionicons name={a.icon} size={22} color={COLORS.primary} />
                 </View>
-                <Text style={styles.actionLabel}>{a.label}</Text>
+                <Text style={s.actionLabel}>{a.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Popular Routes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Popular Routes</Text>
-          {POPULAR_ROUTES.map((r, i) => (
-            <TouchableOpacity key={i} style={styles.routeCard} activeOpacity={0.85}
-              onPress={() => navigation.navigate('SearchRide', { origin: r.from, destination: r.to })}>
-              <View style={styles.routeLeft}>
-                <Ionicons name="location" size={16} color={COLORS.primary} />
-                <Text style={styles.routeText}>{r.from} → {r.to}</Text>
-              </View>
-              <View style={styles.routeRight}>
-                <Text style={styles.routePrice}>From {r.price}</Text>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.textSecondary} />
-              </View>
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Upcoming Rides</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AllRides')} style={s.seeAll}>
+              <Text style={s.seeAllText}>See all</Text>
+              <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
             </TouchableOpacity>
-          ))}
+          </View>
+          {ridesLoading ? (
+            <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 20 }} />
+          ) : upcomingRides.length === 0 ? (
+            <View style={s.empty}>
+              <Ionicons name="car-outline" size={36} color={COLORS.border} />
+              <Text style={s.emptyText}>No upcoming rides</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={upcomingRides}
+              keyExtractor={i => i._id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 4 }}
+              renderItem={({ item }) => (
+                <UpcomingCard ride={item}
+                  onPress={() => navigation.getParent()?.navigate('RideDetails', { rideId: item._id })} />
+              )}
+            />
+          )}
         </View>
+
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { paddingBottom: 24 },
-  hero: { padding: 20, paddingBottom: 28 },
+  scroll: { paddingBottom: 32 },
+  hero: { padding: 20, paddingBottom: 24 },
   greeting: { color: '#fff', fontSize: SIZES.xxl, fontWeight: '700' },
   heroSub: { color: 'rgba(255,255,255,0.75)', fontSize: SIZES.sm, marginTop: 2, marginBottom: 16 },
-  searchBar: {
-    backgroundColor: '#fff', borderRadius: SIZES.radius, padding: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 8, ...SHADOWS.card,
-  },
+  searchBar: { backgroundColor: '#fff', borderRadius: SIZES.radius, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 8, ...SHADOWS.card },
   searchText: { color: COLORS.textSecondary, fontSize: SIZES.base, flex: 1 },
   section: { paddingHorizontal: 16, paddingTop: 20 },
-  sectionTitle: { fontSize: SIZES.lg, fontWeight: '700', color: COLORS.text, marginBottom: 14 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  sectionTitle: { fontSize: SIZES.lg, fontWeight: '700', color: COLORS.text },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  seeAllText: { fontSize: SIZES.sm, color: COLORS.primary, fontWeight: '600' },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  actionCard: {
-    width: '23%', backgroundColor: COLORS.card, borderRadius: SIZES.radius,
-    padding: 12, alignItems: 'center', ...SHADOWS.card,
-  },
-  actionIconWrap: {
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: COLORS.primary + '12',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
-  },
+  actionCard: { width: '23%', backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 12, alignItems: 'center', ...SHADOWS.card },
+  actionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: COLORS.primary + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   actionLabel: { fontSize: 11, color: COLORS.text, fontWeight: '500', textAlign: 'center' },
-  routeCard: {
-    backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 14,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 10, ...SHADOWS.card,
-  },
-  routeLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  routeText: { fontSize: SIZES.base, fontWeight: '600', color: COLORS.text },
-  routeRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  routePrice: { fontSize: SIZES.sm, color: COLORS.textSecondary },
+  empty: { alignItems: 'center', paddingVertical: 24, gap: 8 },
+  emptyText: { color: COLORS.textSecondary, fontSize: SIZES.sm },
+  viewAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 16, borderWidth: 1.5, borderColor: COLORS.primary + '30', ...SHADOWS.card },
+  viewAllText: { flex: 1, fontSize: SIZES.base, color: COLORS.primary, fontWeight: '600' },
 });

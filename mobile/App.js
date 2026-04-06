@@ -8,6 +8,7 @@ import { store } from './src/store';
 import AppNavigator from './src/navigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { connectSocket } from './src/services/socket';
+import { RideProvider } from './src/context/RideContext';
 
 export default function App() {
   useEffect(() => {
@@ -25,7 +26,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <Provider store={store}>
-          <AppNavigator />
+          <RideProvider>
+            <AppNavigator />
+          </RideProvider>
         </Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
