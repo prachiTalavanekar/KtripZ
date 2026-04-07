@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   departureSummary: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginTop: 10, backgroundColor: COLORS.success + '12',
+    marginTop: 10, backgroundColor: '#2ECC7112',
     padding: 10, borderRadius: 8,
   },
   departureSummaryText: { fontSize: SIZES.sm, color: COLORS.success, fontWeight: '600' },
@@ -401,10 +401,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 10,
     padding: 12, marginBottom: 8, backgroundColor: '#fff',
   },
-  vehicleCardActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' },
+  vehicleCardActive: { borderColor: COLORS.primary, backgroundColor: '#0A1F4408' },
   vehicleIcon: {
     width: 40, height: 40, borderRadius: 10,
-    backgroundColor: COLORS.primary + '12',
+    backgroundColor: '#0A1F4412',
     alignItems: 'center', justifyContent: 'center',
   },
   vehicleIconActive: { backgroundColor: COLORS.primary },

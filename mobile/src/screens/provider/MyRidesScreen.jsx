@@ -14,13 +14,16 @@ import { COLORS, SIZES, SHADOWS } from '../../constants/theme';
 import { format } from 'date-fns';
 
 const TABS = [
-  { key: 'scheduled', label: 'Upcoming', icon: 'time-outline' },
+  { key: 'all',       label: 'All',       icon: 'list-outline' },
+  { key: 'scheduled', label: 'Upcoming',  icon: 'time-outline' },
   { key: 'completed', label: 'Completed', icon: 'checkmark-circle-outline' },
   { key: 'cancelled', label: 'Cancelled', icon: 'close-circle-outline' },
 ];
 
 const TAB_COLORS = {
+  all: COLORS.text,
   scheduled: COLORS.primary,
+  active: COLORS.primary, // or define a new color if you prefer, but sticking to primary for now
   completed: COLORS.success,
   cancelled: '#EF4444',
 };
@@ -147,7 +150,7 @@ const em = StyleSheet.create({
 });
 
 // ── Ride Card ─────────────────────────────────────────────────────────────────
-function RideCard({ ride, onPress, onLongPress, activeTab }) {
+function RideCard({ ride, navigation, onPress, onLongPress, activeTab }) {
   const color = TAB_COLORS[ride.status] || COLORS.textSecondary;
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.85}>
@@ -160,9 +163,16 @@ function RideCard({ ride, onPress, onLongPress, activeTab }) {
               {ride.origin?.name} → {ride.destination?.name}
             </Text>
           </View>
-          <TouchableOpacity onPress={onLongPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="ellipsis-vertical" size={18} color={COLORS.textSecondary} />
-          </TouchableOpacity>
+          <View style={styles.cardTopRight}>
+            <View style={[styles.statusBadge, { backgroundColor: color + '15' }]}>
+              <Text style={[styles.statusBadgeText, { color: color }]}>
+                {ride.status.charAt(0).toUpperCase() + ride.status.slice(1)}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onLongPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="ellipsis-vertical" size={18} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
@@ -182,6 +192,15 @@ function RideCard({ ride, onPress, onLongPress, activeTab }) {
             <Text style={styles.metaText}>₹{ride.pricePerSeat}</Text>
           </View>
         </View>
+        {(ride.status === 'scheduled' || ride.status === 'active') && (
+          <TouchableOpacity
+            style={styles.trackBtn}
+            onPress={() => navigation.getParent()?.navigate('ManageRide', { rideId: ride._id, initialTab: 'approved' })}
+          >
+            <Ionicons name="navigate-outline" size={14} color={COLORS.primary} />
+            <Text style={styles.trackBtnText}>Track & Manage</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -191,7 +210,7 @@ function RideCard({ ride, onPress, onLongPress, activeTab }) {
 export default function MyRidesScreen({ navigation }) {
   const dispatch = useDispatch();
   const { myRides, loading } = useSelector(s => s.rides);
-  const [activeTab, setActiveTab] = useState('scheduled');
+  const [activeTab, setActiveTab] = useState('all');
   const [selectedRide, setSelectedRide] = useState(null);
   const [showActions, setShowActions] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -201,7 +220,11 @@ export default function MyRidesScreen({ navigation }) {
   useEffect(() => { load(); }, []);
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  const filtered = myRides.filter(r => r.status === activeTab);
+  const filtered = myRides.filter(r => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'scheduled') return r.status === 'scheduled' || r.status === 'active';
+    return r.status === activeTab;
+  });
 
   const openActions = (ride) => { setSelectedRide(ride); setShowActions(true); };
 
@@ -254,9 +277,17 @@ export default function MyRidesScreen({ navigation }) {
               <Text style={[styles.tabLabel, active && { color, fontWeight: '700' }]}>
                 {tab.label}
               </Text>
-              {myRides.filter(r => r.status === tab.key).length > 0 && (
+              {myRides.filter(r => {
+                if (tab.key === 'all') return true;
+                if (tab.key === 'scheduled') return r.status === 'scheduled' || r.status === 'active';
+                return r.status === tab.key;
+              }).length > 0 && (
                 <View style={[styles.badge, { backgroundColor: color }]}>
-                  <Text style={styles.badgeText}>{myRides.filter(r => r.status === tab.key).length}</Text>
+                  <Text style={styles.badgeText}>{myRides.filter(r => {
+                    if (tab.key === 'all') return true;
+                    if (tab.key === 'scheduled') return r.status === 'scheduled' || r.status === 'active';
+                    return r.status === tab.key;
+                  }).length}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -276,6 +307,7 @@ export default function MyRidesScreen({ navigation }) {
           renderItem={({ item }) => (
             <RideCard
               ride={item}
+              navigation={navigation}
               activeTab={activeTab}
               onPress={() => navigation.getParent()?.navigate('ManageRide', { rideId: item._id })}
               onLongPress={() => openActions(item)}
@@ -342,11 +374,21 @@ const styles = StyleSheet.create({
   statusBar: { width: 4 },
   cardBody: { flex: 1, padding: 12 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  statusBadgeText: { fontSize: 10, fontWeight: '700' },
   routeWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
   route: { fontSize: SIZES.base, fontWeight: '600', color: COLORS.text, flex: 1 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { fontSize: 11, color: COLORS.textSecondary },
+
+  trackBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, backgroundColor: '#0A1F4408', borderRadius: 10,
+    marginTop: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#0A1F4415',
+  },
+  trackBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
 
   empty: { alignItems: 'center', marginTop: 80, gap: 10 },
   emptyTitle: { fontSize: SIZES.base, color: COLORS.textSecondary, fontWeight: '500' },

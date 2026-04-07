@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     marginBottom: 10, flexDirection: 'row', alignItems: 'flex-start', gap: 12, ...SHADOWS.card,
   },
   unread: { borderLeftWidth: 3, borderLeftColor: COLORS.primary },
-  iconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.primary + '12', alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#0A1F4412', alignItems: 'center', justifyContent: 'center' },
   notifTitle: { fontSize: SIZES.base, fontWeight: '600', color: COLORS.text },
   notifBody: { fontSize: SIZES.sm, color: COLORS.textSecondary, marginTop: 2 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary, marginTop: 4 },

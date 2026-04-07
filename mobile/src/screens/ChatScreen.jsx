@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
 
   lockIconWrap: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: '#0A1F4410',
     alignItems: 'center', justifyContent: 'center',
   },
   lockTitle: { fontSize: SIZES.xl, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   msgWrapTheirs: { justifyContent: 'flex-start' },
   avatarSmall: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: COLORS.primary + '20', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#0A1F4420', alignItems: 'center', justifyContent: 'center',
   },
   avatarSmallText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
 

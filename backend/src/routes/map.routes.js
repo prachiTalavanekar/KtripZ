@@ -23,6 +23,36 @@ router.get('/geocode', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/maps/route — get route polyline + ETA from OLA Maps
+router.post('/route', async (req, res, next) => {
+  try {
+    const { origin, destination } = req.body;
+    const apiKey = process.env.OLA_MAPS_API_KEY;
+
+    const response = await axios.get(`${OLA_BASE}/routing/v1/directions`, {
+      params: {
+        origin: `${origin.lat},${origin.lng}`,
+        destination: `${destination.lat},${destination.lng}`,
+        api_key: apiKey,
+      },
+    });
+
+    const route = response.data.routes?.[0];
+    const leg = route?.legs?.[0];
+
+    res.json({
+      polyline: route?.overview_polyline?.points || '',
+      distance: leg?.distance?.value || 0,
+      duration: leg?.duration?.value || 0,
+      distanceText: leg?.distance?.text || '',
+      durationText: leg?.duration?.text || '',
+    });
+  } catch (err) {
+    // Return empty route on OLA API failure
+    res.json({ polyline: '', distance: 0, duration: 0, distanceText: '—', durationText: '—' });
+  }
+});
+
 // POST /api/maps/stops — fetch bus stands / stops for a city
 router.post('/stops', async (req, res, next) => {
   try {

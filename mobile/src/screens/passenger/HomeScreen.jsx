@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  FlatList, Animated, Easing, ActivityIndicator,
+  FlatList, ActivityIndicator,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,56 +20,41 @@ const QUICK_ACTIONS = [
 ];
 
 function Marquee({ routes, onPress }) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const containerW = useRef(0);
-  const contentW = useRef(0);
-
-  const start = () => {
-    if (!contentW.current || !containerW.current) return;
-    translateX.setValue(containerW.current);
-    Animated.loop(
-      Animated.timing(translateX, {
-        toValue: -contentW.current,
-        duration: contentW.current * 20,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-  };
-
-  useEffect(() => { start(); }, [routes]);
   if (!routes.length) return null;
 
   return (
-    <View style={mq.wrapper} onLayout={e => { containerW.current = e.nativeEvent.layout.width; start(); }}>
+    <View style={mq.wrapper}>
       <View style={mq.labelRow}>
         <Ionicons name="trending-up" size={12} color={COLORS.primary} />
         <Text style={mq.label}>YOUR ROUTES</Text>
       </View>
-      <View style={mq.track}>
-        <Animated.View
-          style={{ flexDirection: 'row', transform: [{ translateX }] }}
-          onLayout={e => { contentW.current = e.nativeEvent.layout.width; start(); }}
-        >
-          {[...routes, ...routes].map((r, i) => (
-            <TouchableOpacity key={i} style={mq.chip}
-              onPress={() => onPress(r.origin, r.destination)} activeOpacity={0.8}>
-              <Ionicons name="location-outline" size={11} color={COLORS.primary} />
-              <Text style={mq.chipText}>{r.origin} → {r.destination}</Text>
-            </TouchableOpacity>
-          ))}
-        </Animated.View>
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={mq.track}
+      >
+        {routes.map((r, i) => (
+          <TouchableOpacity
+            key={i}
+            style={mq.chip}
+            onPress={() => onPress(r.origin, r.destination)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="location-outline" size={11} color={COLORS.primary} />
+            <Text style={mq.chipText}>{r.origin} → {r.destination}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
 const mq = StyleSheet.create({
   wrapper: { backgroundColor: COLORS.card, paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   label: { fontSize: 10, fontWeight: '700', color: COLORS.primary, letterSpacing: 0.8 },
-  track: { overflow: 'hidden' },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary + '12', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, marginRight: 10 },
+  track: { flexDirection: 'row', gap: 8, paddingRight: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0A1F4412', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   chipText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
 });
 
@@ -224,10 +209,10 @@ const s = StyleSheet.create({
   seeAllText: { fontSize: SIZES.sm, color: COLORS.primary, fontWeight: '600' },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   actionCard: { width: '23%', backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 12, alignItems: 'center', ...SHADOWS.card },
-  actionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: COLORS.primary + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  actionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#0A1F4412', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   actionLabel: { fontSize: 11, color: COLORS.text, fontWeight: '500', textAlign: 'center' },
   empty: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   emptyText: { color: COLORS.textSecondary, fontSize: SIZES.sm },
-  viewAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 16, borderWidth: 1.5, borderColor: COLORS.primary + '30', ...SHADOWS.card },
+  viewAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 16, borderWidth: 1.5, borderColor: '#0A1F4430', ...SHADOWS.card },
   viewAllText: { flex: 1, fontSize: SIZES.base, color: COLORS.primary, fontWeight: '600' },
 });

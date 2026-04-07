@@ -158,9 +158,9 @@ const s = StyleSheet.create({
   value: { fontSize: SIZES.sm, color: COLORS.text, fontWeight: '500' },
   bold: { fontWeight: '800', fontSize: SIZES.base, color: COLORS.text },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 2 },
-  totalDivider: { height: 1.5, backgroundColor: COLORS.primary + '30', marginVertical: 6 },
+  totalDivider: { height: 1.5, backgroundColor: '#0A1F4430', marginVertical: 6 },
 
-  noteCard: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary + '08', borderRadius: SIZES.radius, padding: 14, borderLeftWidth: 3, borderLeftColor: COLORS.primary },
+  noteCard: { flexDirection: 'row', gap: 8, backgroundColor: '#0A1F4408', borderRadius: SIZES.radius, padding: 14, borderLeftWidth: 3, borderLeftColor: COLORS.primary },
   noteText: { flex: 1, fontSize: SIZES.sm, color: COLORS.text, lineHeight: 20 },
 
   footer: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.card, padding: 16, paddingBottom: 24, borderTopWidth: 1, borderTopColor: COLORS.border, elevation: 10 },

@@ -15,7 +15,7 @@ function Seat({ seat, isSelected, onPress }) {
 
   const cfg = {
     driver:    { bg: '#E5E7EB', border: '#D1D5DB', color: COLORS.textSecondary, icon: 'navigate-circle' },
-    available: { bg: '#EEF4FF', border: COLORS.primary + '60', color: COLORS.primary, icon: 'person' },
+    available: { bg: '#EEF4FF', border: '#0A1F4460', color: COLORS.primary, icon: 'person' },
     selected:  { bg: COLORS.primary, border: COLORS.primary, color: '#fff', icon: 'person' },
     booked:    { bg: '#F3F4F6', border: '#E5E7EB', color: '#D1D5DB', icon: 'person' },
   };
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     padding: 12, ...SHADOWS.card,
   },
   vehicleName: { flex: 1, fontSize: SIZES.sm, fontWeight: '600', color: COLORS.text },
-  badge: { backgroundColor: COLORS.primary + '12', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badge: { backgroundColor: '#0A1F4412', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeFull: { backgroundColor: '#FEE2E2' },
   badgeText: { fontSize: 11, color: COLORS.primary, fontWeight: '700' },
   badgeTextFull: { color: '#EF4444' },
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   refreshText: { fontSize: SIZES.xs, color: COLORS.primary, fontWeight: '600' },
   summaryBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: COLORS.primary + '10', borderRadius: SIZES.radius, padding: 12,
+    backgroundColor: '#0A1F4410', borderRadius: SIZES.radius, padding: 12,
   },
   summaryText: { fontSize: SIZES.sm, color: COLORS.primary, fontWeight: '600' },
   footer: {

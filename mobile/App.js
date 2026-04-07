@@ -12,6 +12,7 @@ import AppNavigator from './src/navigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { connectSocket } from './src/services/socket';
 import { RideProvider } from './src/context/RideContext';
+import { RideTrackingProvider } from './src/context/RideTrackingContext';
 
 // Keep splash visible while loading fonts
 SplashScreen.preventAutoHideAsync();
@@ -54,7 +55,9 @@ export default function App() {
       <SafeAreaProvider>
         <Provider store={store}>
           <RideProvider>
-            <AppNavigator />
+            <RideTrackingProvider>
+              <AppNavigator />
+            </RideTrackingProvider>
           </RideProvider>
         </Provider>
       </SafeAreaProvider>

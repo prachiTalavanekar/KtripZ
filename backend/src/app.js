@@ -30,6 +30,8 @@ app.use(express.urlencoded({ extended: true }));
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use('/api/', limiter);
 
+const trackingRoutes = require('./routes/tracking.routes');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rides', rideRoutes);
@@ -40,6 +42,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/maps', mapRoutes);
+app.use('/api/tracking', trackingRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'KTripZ API' }));
 

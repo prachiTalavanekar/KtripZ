@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
   menuIconWrap: {
     width: 36, height: 36, borderRadius: 10,
-    backgroundColor: COLORS.primary + '12',
+    backgroundColor: '#0A1F4412',
     alignItems: 'center', justifyContent: 'center',
   },
   menuLabel: { flex: 1, fontSize: SIZES.base, color: COLORS.text, fontWeight: '500' },

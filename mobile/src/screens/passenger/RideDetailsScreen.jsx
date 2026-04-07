@@ -257,11 +257,11 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   ratingText: { fontSize: SIZES.sm, color: COLORS.textSecondary },
   driverBtns: { flexDirection: 'row', gap: 8 },
-  iconBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: COLORS.primary + '12', alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#0A1F4412', alignItems: 'center', justifyContent: 'center' },
 
   // Vehicle
   vehicleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  vehicleIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: COLORS.primary + '12', alignItems: 'center', justifyContent: 'center' },
+  vehicleIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#0A1F4412', alignItems: 'center', justifyContent: 'center' },
   vehicleModel: { fontSize: SIZES.base, fontWeight: '700', color: COLORS.text, marginBottom: 8 },
   vehicleTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#F5F7FA', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: SIZES.sm, color: COLORS.textSecondary },
   priceValue: { fontSize: SIZES.sm, color: COLORS.text, fontWeight: '500' },
   priceDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 2 },
-  priceTotalLine: { height: 1.5, backgroundColor: COLORS.primary + '30', marginVertical: 6 },
+  priceTotalLine: { height: 1.5, backgroundColor: '#0A1F4430', marginVertical: 6 },
   priceTotalLabel: { fontSize: SIZES.base, fontWeight: '800', color: COLORS.text },
   priceTotalValue: { fontSize: SIZES.base, fontWeight: '800', color: COLORS.primary },
 

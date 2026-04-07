@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   },
   avatarLetter: { color: '#fff', fontSize: 38, fontWeight: '800' },
   name: { fontSize: SIZES.xxl, fontWeight: '700', color: COLORS.text },
-  roleBadge: { backgroundColor: COLORS.primary + '15', paddingHorizontal: 12, paddingVertical: 3, borderRadius: 20, marginTop: 4 },
+  roleBadge: { backgroundColor: '#0A1F4415', paddingHorizontal: 12, paddingVertical: 3, borderRadius: 20, marginTop: 4 },
   roleText: { fontSize: SIZES.xs, color: COLORS.primary, fontWeight: '700' },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   rating: { fontSize: SIZES.base, color: COLORS.text, fontWeight: '600' },
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 14,
-    borderWidth: 1, borderColor: COLORS.error + '40', ...SHADOWS.card,
+    borderWidth: 1, borderColor: '#E74C3C40', ...SHADOWS.card,
   },
   logoutText: { fontSize: SIZES.base, color: COLORS.error, fontWeight: '600' },
 });

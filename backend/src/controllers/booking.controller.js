@@ -181,7 +181,11 @@ exports.cancelBooking = async (req, res, next) => {
 exports.getMyBookings = async (req, res, next) => {
   try {
     const bookings = await Booking.find({ passengerId: req.user._id })
-      .populate({ path: 'rideId', populate: { path: 'driverId', select: 'name profileImage rating' } })
+      .populate({
+        path: 'rideId',
+        populate: { path: 'driverId', select: 'name profileImage rating phone' },
+        select: 'origin destination departureTime pricePerSeat availableSeats status driverId',
+      })
       .sort({ createdAt: -1 });
     res.json(bookings);
   } catch (err) { next(err); }
@@ -193,7 +197,8 @@ exports.getRideBookings = async (req, res, next) => {
     const ride = await Ride.findOne({ _id: req.params.rideId, driverId: req.user._id });
     if (!ride) return res.status(403).json({ message: 'Not authorized' });
     const bookings = await Booking.find({ rideId: req.params.rideId })
-      .populate('passengerId', 'name profileImage rating phone');
+      .populate('passengerId', 'name profileImage rating phone')
+      .populate('rideId', 'origin destination departureTime pricePerSeat');
     res.json(bookings);
   } catch (err) { next(err); }
 };
@@ -229,18 +234,81 @@ exports.getBookedSeats = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /bookings/driver/pending — all pending bookings across driver's rides
+// GET /bookings/driver/pending — all bookings across driver's rides (all statuses)
 exports.getDriverPendingBookings = async (req, res, next) => {
   try {
     const rides = await Ride.find({ driverId: req.user._id }).select('_id');
     const rideIds = rides.map(r => r._id);
-    const bookings = await Booking.find({
-      rideId: { $in: rideIds },
-      status: 'pending',
-    })
-      .populate('passengerId', 'name profileImage')
-      .populate('rideId', 'origin destination departureTime')
+    const bookings = await Booking.find({ rideId: { $in: rideIds } })
+      .populate('passengerId', 'name profileImage phone')
+      .populate('rideId', 'origin destination departureTime pricePerSeat')
       .sort({ createdAt: -1 });
     res.json(bookings);
+  } catch (err) { next(err); }
+};
+
+// POST /api/bookings/generate-otp — driver reached pickup
+exports.generateOtp = async (req, res, next) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = await Booking.findById(bookingId).populate('passengerId').populate('rideId');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    booking.pickupOtp = otp;
+    booking.otpVerified = false;
+    await booking.save();
+
+    // Notify passenger via socket
+    getIO().to(`booking:${bookingId}`).emit('pickup_otp_generated', { bookingId, otp });
+    getIO().to(`user:${booking.passengerId._id}`).emit('pickup_otp_generated', { bookingId, otp });
+
+    // FCM push
+    await sendPushNotification(
+      booking.passengerId.fcmToken,
+      'Driver Arrived!',
+      `Your OTP is: ${otp}. Share with driver to start ride.`
+    );
+
+    res.json({ message: 'OTP generated', otp });
+  } catch (err) { next(err); }
+};
+
+// POST /api/bookings/verify-otp — driver enters OTP
+exports.verifyOtp = async (req, res, next) => {
+  try {
+    const { bookingId, otp } = req.body;
+    const booking = await Booking.findById(bookingId).populate('passengerId').populate('rideId');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.pickupOtp !== otp) return res.status(400).json({ message: 'Invalid OTP' });
+
+    booking.status = 'ride_started';
+    booking.otpVerified = true;
+    booking.rideStartedAt = new Date();
+    await booking.save();
+
+    getIO().to(`booking:${bookingId}`).emit('ride_started', { bookingId, rideStartedAt: booking.rideStartedAt });
+    getIO().to(`user:${booking.passengerId._id}`).emit('ride_started', { bookingId });
+
+    await sendPushNotification(booking.passengerId.fcmToken, 'Ride Started!', 'Your ride has begun. Have a safe journey!');
+
+    res.json({ message: 'Ride started', booking });
+  } catch (err) { next(err); }
+};
+
+// POST /api/bookings/complete-ride — driver ends ride
+exports.completeRide2 = async (req, res, next) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = await Booking.findById(bookingId).populate('passengerId');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    booking.status = 'completed';
+    await booking.save();
+
+    getIO().to(`booking:${bookingId}`).emit('ride_completed', { bookingId });
+    getIO().to(`user:${booking.passengerId._id}`).emit('ride_completed', { bookingId });
+
+    res.json({ message: 'Ride completed' });
   } catch (err) { next(err); }
 };

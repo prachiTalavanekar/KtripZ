@@ -27,6 +27,10 @@ import ManageRideScreen from '../screens/provider/ManageRideScreen';
 import VehiclesScreen from '../screens/provider/VehiclesScreen';
 import AnalyticsScreen from '../screens/provider/AnalyticsScreen';
 import StopSelectionScreen from '../screens/provider/StopSelectionScreen';
+import DriverTrackingScreen from '../screens/tracking/DriverTrackingScreen';
+import PassengerTrackingScreen from '../screens/tracking/PassengerTrackingScreen';
+import OtpVerificationScreen from '../screens/tracking/OtpVerificationScreen';
+import ActiveRideScreen from '../screens/tracking/ActiveRideScreen';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -151,6 +155,8 @@ function PassengerTabs({ navigation: rootNav }) {
         <PassengerStack.Screen name="SeatSelection" component={SeatSelectionScreen} />
         <PassengerStack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
         <PassengerStack.Screen name="Chat" component={ChatScreen} />
+        <PassengerStack.Screen name="PassengerTracking" component={PassengerTrackingScreen} />
+        <PassengerStack.Screen name="ActiveRide" component={ActiveRideScreen} />
       </PassengerStack.Navigator>
     </Shell>
   );
@@ -198,6 +204,9 @@ function ProviderTabs({ navigation: rootNav }) {
         <ProviderStack.Screen name="Analytics" component={AnalyticsScreen} />
         <ProviderStack.Screen name="Chat" component={ChatScreen} />
         <ProviderStack.Screen name="StopSelection" component={StopSelectionScreen} />
+        <ProviderStack.Screen name="DriverTracking" component={DriverTrackingScreen} />
+        <ProviderStack.Screen name="OtpVerification" component={OtpVerificationScreen} />
+        <ProviderStack.Screen name="ActiveRide" component={ActiveRideScreen} />
       </ProviderStack.Navigator>
     </Shell>
   );

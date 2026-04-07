@@ -23,16 +23,18 @@ function filterByTab(bookings, tab) {
   const now = new Date();
   switch (tab) {
     case 'upcoming':
-      return bookings.filter(b =>
-        b.status === 'approved' &&
-        b.rideId?.departureTime &&
-        new Date(b.rideId.departureTime) > now
-      );
+      // Show approved bookings with future departure time
+      return bookings.filter(b => {
+        if (b.status !== 'approved') return false;
+        if (!b.rideId?.departureTime) return true; // include if no date (safe fallback)
+        return new Date(b.rideId.departureTime) > now;
+      });
     case 'pending':
       return bookings.filter(b => b.status === 'pending');
     case 'completed':
       return bookings.filter(b =>
         b.status === 'completed' ||
+        b.status === 'ride_started' ||
         (b.status === 'approved' && b.rideId?.departureTime && new Date(b.rideId.departureTime) <= now)
       );
     case 'cancelled':
@@ -43,7 +45,7 @@ function filterByTab(bookings, tab) {
 }
 
 // ── Booking Card ──────────────────────────────────────────────────────────────
-function BookingCard({ booking, tab, onChatPress, onCancelPress }) {
+function BookingCard({ booking, tab, onChatPress, onCancelPress, onTrackPress }) {
   const ride = booking.rideId;
   // Chat only available when approved
   const chatEnabled = booking.status === 'approved';
@@ -130,6 +132,12 @@ function BookingCard({ booking, tab, onChatPress, onCancelPress }) {
                 <Text style={styles.chatBtnLockedText}>Chat unlocks on approval</Text>
               </View>
             ) : null}
+            {chatEnabled && onTrackPress && (
+              <TouchableOpacity style={styles.trackBtn} onPress={onTrackPress} activeOpacity={0.8}>
+                <Ionicons name="navigate" size={14} color="#fff" />
+                <Text style={styles.trackBtnText}>Track</Text>
+              </TouchableOpacity>
+            )}
             {canCancel && (
               <TouchableOpacity style={styles.cancelBtn} onPress={onCancelPress} activeOpacity={0.8}>
                 <Ionicons name="close-outline" size={14} color={COLORS.error} />
@@ -224,6 +232,11 @@ export default function MyBookingsScreen({ navigation }) {
                 driverName: item.rideId?.driverId?.name,
                 bookingStatus: item.status,
               })}
+              onTrackPress={item.status === 'approved' ? () => navigation.getParent()?.navigate('PassengerTracking', {
+                bookingId: item._id,
+                driverName: item.rideId?.driverId?.name,
+                rideId: item.rideId?._id,
+              }) : null}
               onCancelPress={() => handleCancel(item)}
             />
           )}
@@ -322,7 +335,7 @@ const styles = StyleSheet.create({
   routeLabels: { flex: 1, justifyContent: 'space-between', gap: 14 },
   cityName: { fontSize: SIZES.sm, fontWeight: '700', color: COLORS.text },
   statusPill: {
-    backgroundColor: COLORS.primary + '12',
+    backgroundColor: '#0A1F4412',
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
   },
   statusText: { fontSize: 10, color: COLORS.primary, fontWeight: '700' },
@@ -353,10 +366,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
   },
   chatBtnLockedText: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '500' },
+  trackBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.success, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+  },
+  trackBtnText: { fontSize: 11, color: '#fff', fontWeight: '600' },
   cancelBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: COLORS.error + '12', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
-    borderWidth: 1, borderColor: COLORS.error + '30',
+    backgroundColor: '#E74C3C12', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+    borderWidth: 1, borderColor: '#E74C3C30',
   },
   cancelBtnText: { fontSize: 11, color: COLORS.error, fontWeight: '600' },
 
@@ -364,7 +382,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 80, gap: 12 },
   emptyIconWrap: {
     width: 72, height: 72, borderRadius: 36,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: '#0A1F4410',
     alignItems: 'center', justifyContent: 'center',
   },
   emptyTitle: { fontSize: SIZES.lg, fontWeight: '700', color: COLORS.text },

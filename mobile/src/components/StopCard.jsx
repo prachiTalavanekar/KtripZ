@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     width: 38, height: 38, borderRadius: 10,
-    backgroundColor: COLORS.primary + '12',
+    backgroundColor: '#0A1F4412',
     alignItems: 'center', justifyContent: 'center',
   },
   info: { flex: 1 },
