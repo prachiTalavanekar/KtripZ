@@ -6,12 +6,16 @@ import {
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
-import { getSocket, joinBookingRoom } from '../services/socket';
+import { getSocket, joinBookingRoom, connectSocket } from '../services/socket';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { format } from 'date-fns';
 
 export default function ChatScreen({ route }) {
-  const { bookingId, driverId, driverName, bookingStatus: initialStatus } = route.params || {};
+  // receiverId = the other party (passenger ID when driver opens, driver ID when passenger opens)
+  const { bookingId, receiverId, receiverName, bookingStatus: initialStatus } = route.params || {};
+  // Support legacy driverId param from older navigation calls
+  const resolvedReceiverId = receiverId || route.params?.driverId;
+  const resolvedReceiverName = receiverName || route.params?.driverName;
   const { user } = useSelector(s => s.auth);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -19,7 +23,7 @@ export default function ChatScreen({ route }) {
   const [loading, setLoading] = useState(true);
   const flatRef = useRef();
 
-  const isApproved = bookingStatus === 'approved';
+  const isApproved = ['approved', 'ride_started'].includes(bookingStatus);
 
   useEffect(() => {
     if (!bookingId) { setLoading(false); return; }
@@ -42,32 +46,42 @@ export default function ChatScreen({ route }) {
     init();
     joinBookingRoom(bookingId);
 
-    const socket = getSocket();
+    // Ensure socket is connected (fallback if not yet initialized)
+    let socket = getSocket();
+    const setupListeners = (s) => {
+      s.on('new_message', (msg) => {
+        setMessages(prev => [...prev, msg]);
+        setTimeout(() => flatRef.current?.scrollToEnd(), 100);
+      });
+      s.on('booking_approved', (booking) => {
+        if (booking._id === bookingId || booking.bookingId === bookingId) {
+          setBookingStatus('approved');
+        }
+      });
+      s.on('booking_cancelled', (booking) => {
+        if (booking._id === bookingId) setBookingStatus(booking.status);
+      });
+      s.on('ride_started', (data) => {
+        if (data.bookingId === bookingId) setBookingStatus('ride_started');
+      });
+    };
 
-    // New message
-    socket?.on('new_message', (msg) => {
-      setMessages(prev => [...prev, msg]);
-      setTimeout(() => flatRef.current?.scrollToEnd(), 100);
-    });
-
-    // Booking approved — unlock chat in real-time
-    socket?.on('booking_approved', (booking) => {
-      if (booking._id === bookingId || booking.bookingId === bookingId) {
-        setBookingStatus('approved');
-      }
-    });
-
-    // Booking cancelled/rejected — lock chat
-    socket?.on('booking_cancelled', (booking) => {
-      if (booking._id === bookingId) {
-        setBookingStatus(booking.status);
-      }
-    });
+    if (socket) {
+      setupListeners(socket);
+    } else {
+      connectSocket().then((s) => {
+        if (s) { joinBookingRoom(bookingId); setupListeners(s); }
+      });
+    }
 
     return () => {
-      socket?.off('new_message');
-      socket?.off('booking_approved');
-      socket?.off('booking_cancelled');
+      const s = getSocket();
+      if (s) {
+        s.off('new_message');
+        s.off('booking_approved');
+        s.off('booking_cancelled');
+        s.off('ride_started');
+      }
     };
   }, [bookingId]);
 
@@ -76,7 +90,7 @@ export default function ChatScreen({ route }) {
     try {
       const msg = await api.post('/messages', {
         bookingId,
-        receiverId: driverId,
+        receiverId: resolvedReceiverId,
         message: text.trim(),
       });
       setMessages(prev => [...prev, msg]);
@@ -92,7 +106,7 @@ export default function ChatScreen({ route }) {
       <View style={[styles.msgWrap, isMine ? styles.msgWrapMine : styles.msgWrapTheirs]}>
         {!isMine && (
           <View style={styles.avatarSmall}>
-            <Text style={styles.avatarSmallText}>{driverName?.[0]?.toUpperCase() || 'D'}</Text>
+            <Text style={styles.avatarSmallText}>{resolvedReceiverName?.[0]?.toUpperCase() || '?'}</Text>
           </View>
         )}
         <View style={[styles.bubble, isMine ? styles.mine : styles.theirs]}>
@@ -148,10 +162,10 @@ export default function ChatScreen({ route }) {
       {/* Chat header info */}
       <View style={styles.chatHeader}>
         <View style={styles.chatAvatar}>
-          <Text style={styles.chatAvatarText}>{driverName?.[0]?.toUpperCase() || 'D'}</Text>
+          <Text style={styles.chatAvatarText}>{resolvedReceiverName?.[0]?.toUpperCase() || '?'}</Text>
         </View>
         <View>
-          <Text style={styles.chatName}>{driverName || 'Driver'}</Text>
+          <Text style={styles.chatName}>{resolvedReceiverName || 'User'}</Text>
           <View style={styles.approvedBadge}>
             <Ionicons name="checkmark-circle" size={11} color={COLORS.success} />
             <Text style={styles.approvedText}>Booking Approved · Chat Active</Text>
@@ -202,23 +216,24 @@ export default function ChatScreen({ route }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F5F7FA' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
 
   lockIconWrap: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: '#0A1F4410',
     alignItems: 'center', justifyContent: 'center',
+    marginBottom: 14,
   },
-  lockTitle: { fontSize: SIZES.xl, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
-  lockSub: { fontSize: SIZES.sm, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20 },
+  lockTitle: { fontSize: SIZES.xl, fontWeight: '700', color: COLORS.text, textAlign: 'center', marginBottom: 8 },
+  lockSub: { fontSize: SIZES.sm, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
   pendingBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#FEF3C7', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
   },
-  pendingText: { fontSize: SIZES.sm, color: '#92400E', fontWeight: '600' },
+  pendingText: { fontSize: SIZES.sm, color: '#92400E', fontWeight: '600', marginLeft: 6 },
 
   chatHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: COLORS.card, padding: 14,
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
     ...SHADOWS.card,
@@ -226,22 +241,24 @@ const styles = StyleSheet.create({
   chatAvatar: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
+    marginRight: 12,
   },
   chatAvatarText: { color: '#fff', fontSize: SIZES.lg, fontWeight: '800' },
   chatName: { fontSize: SIZES.base, fontWeight: '700', color: COLORS.text },
-  approvedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  approvedText: { fontSize: SIZES.xs, color: COLORS.success, fontWeight: '600' },
+  approvedBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  approvedText: { fontSize: SIZES.xs, color: COLORS.success, fontWeight: '600', marginLeft: 4 },
 
-  list: { padding: 16, gap: 10, paddingBottom: 8 },
-  emptyChat: { alignItems: 'center', marginTop: 60, gap: 10 },
-  emptyChatText: { fontSize: SIZES.sm, color: COLORS.textSecondary },
+  list: { padding: 16, paddingBottom: 8 },
+  emptyChat: { alignItems: 'center', marginTop: 60 },
+  emptyChatText: { fontSize: SIZES.sm, color: COLORS.textSecondary, marginTop: 10 },
 
-  msgWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  msgWrap: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 },
   msgWrapMine: { justifyContent: 'flex-end' },
   msgWrapTheirs: { justifyContent: 'flex-start' },
   avatarSmall: {
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: '#0A1F4420', alignItems: 'center', justifyContent: 'center',
+    marginRight: 6,
   },
   avatarSmallText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
 
@@ -263,7 +280,7 @@ const styles = StyleSheet.create({
 
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', padding: 12,
-    backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.border, gap: 10,
+    backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.border,
   },
   input: {
     flex: 1, minHeight: 44, maxHeight: 100,
@@ -271,6 +288,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
     fontSize: SIZES.base, color: COLORS.text,
     borderWidth: 1, borderColor: COLORS.border,
+    marginRight: 10,
   },
   sendBtn: {
     width: 44, height: 44, borderRadius: 22,

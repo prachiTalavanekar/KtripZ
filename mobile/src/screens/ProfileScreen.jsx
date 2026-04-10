@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { logout } from '../store/slices/authSlice';
+import { disconnectSocket } from '../services/socket';
 import api from '../services/api';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -31,6 +32,7 @@ export default function ProfileScreen({ navigation }) {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout', style: 'destructive', onPress: () => {
+          disconnectSocket();
           dispatch(logout());
           // Navigate to root Login screen
           const rootNav = navigation.getParent('RootStack') || navigation.getParent() || navigation;

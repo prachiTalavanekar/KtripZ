@@ -3,6 +3,7 @@ import { View, Image, Text, StyleSheet, Animated, StatusBar, Dimensions } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { restoreSession, fetchMe } from '../store/slices/authSlice';
+import { connectSocket } from '../services/socket';
 import { COLORS, SIZES } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -44,6 +45,7 @@ export default function SplashScreen({ navigation }) {
 
       if (result.meta.requestStatus === 'fulfilled') {
         const { user } = result.payload;
+        await connectSocket(); // connect socket after session restore
         navigation.replace(user.role === 'provider' ? 'ProviderTabs' : 'PassengerTabs');
         dispatch(fetchMe()).catch(() => {});
       } else {

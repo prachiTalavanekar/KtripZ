@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { register } from '../../store/slices/authSlice';
+import { connectSocket } from '../../services/socket';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { COLORS, SIZES } from '../../constants/theme';
@@ -18,6 +19,7 @@ const RegisterScreen = ({ navigation }) => {
   const handleRegister = async () => {
     const result = await dispatch(register(form));
     if (result.meta.requestStatus === 'fulfilled') {
+      await connectSocket();
       const role = result.payload.user.role;
       navigation.replace(role === 'provider' ? 'ProviderTabs' : 'PassengerTabs');
     }

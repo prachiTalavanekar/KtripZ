@@ -228,8 +228,8 @@ export default function MyBookingsScreen({ navigation }) {
               tab={activeTab}
               onChatPress={() => navigation.getParent()?.navigate('Chat', {
                 bookingId: item._id,
-                driverId: item.rideId?.driverId?._id || item.rideId?.driverId,
-                driverName: item.rideId?.driverId?.name,
+                receiverId: item.rideId?.driverId?._id || item.rideId?.driverId,
+                receiverName: item.rideId?.driverId?.name,
                 bookingStatus: item.status,
               })}
               onTrackPress={item.status === 'approved' ? () => navigation.getParent()?.navigate('PassengerTracking', {

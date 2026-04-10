@@ -231,9 +231,9 @@ export default function ManageRideScreen({ route, navigation }) {
               onReject={() => handleAction(item._id, 'reject')}
               onChat={() => navigation.navigate('Chat', {
                 bookingId: item._id,
-                driverId: item.passengerId?._id,
-                driverName: item.passengerId?.name,
-                bookingStatus: 'approved',
+                receiverId: item.passengerId?._id,
+                receiverName: item.passengerId?.name,
+                bookingStatus: item.status,
               })}
               onTrack={() => navigation.navigate('DriverTracking', {
                 bookingId: item._id,

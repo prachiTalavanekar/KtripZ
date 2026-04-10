@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
+import { disconnectSocket } from '../services/socket';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -67,6 +68,7 @@ export default function Sidebar({ visible, onClose, navigation }) {
   const handleLogout = () => {
     onClose();
     setTimeout(() => {
+      disconnectSocket();
       dispatch(logout());
       if (navigation.navigateRoot) {
         navigation.navigateRoot('Login');
