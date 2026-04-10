@@ -12,6 +12,17 @@ const userSchema = new mongoose.Schema({
   totalRatings: { type: Number, default: 0 },
   fcmToken: { type: String, default: null },
   isActive: { type: Boolean, default: true },
+  savedLocation: {
+    country: { type: String },
+    state: { type: String },
+    district: { type: String },
+    city: { type: String },
+    village: { type: String },
+    street: { type: String },
+    pincode: { type: String },
+    lat: { type: Number },
+    lng: { type: Number },
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

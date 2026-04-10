@@ -2,6 +2,7 @@
   "expo": {
     "name": "KTripZ",
     "slug": "ktripz",
+    "scheme": "ktripz",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,22 +15,35 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ktripz.app"
+      "bundleIdentifier": "com.ktripz.mobile"
     },
     "android": {
+      "package": "com.ktripz.mobile",
+      "googleServicesFile": "./google-services.json",
+      "edgeToEdgeEnabled": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A1F44"
       },
-      "package": "com.ktripz.app",
-      "edgeToEdgeEnabled": false
+      "permissions": [
+        "NOTIFICATIONS",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-notifications",
       "@react-native-community/datetimepicker",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "44246d86-78ca-4291-8d74-a51e3d8b42d9"
+      }
+    },
+    "owner": "ktripzz"
   }
 }

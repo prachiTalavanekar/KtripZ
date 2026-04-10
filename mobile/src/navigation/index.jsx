@@ -16,6 +16,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/passenger/HomeScreen';
 import SearchRideScreen from '../screens/passenger/SearchRideScreen';
 import AllRidesScreen from '../screens/passenger/AllRidesScreen';
+import LocationScreen from '../screens/passenger/LocationScreen';
 import RideDetailsScreen from '../screens/passenger/RideDetailsScreen';
 import SeatSelectionScreen from '../screens/passenger/SeatSelectionScreen';
 import BookingConfirmationScreen from '../screens/passenger/BookingConfirmationScreen';
@@ -151,6 +152,7 @@ function PassengerTabs({ navigation: rootNav }) {
       <PassengerStack.Navigator ref={stackNavRef} screenOptions={{ headerShown: false }}>
         <PassengerStack.Screen name="Tabs" component={TabNav} />
         <PassengerStack.Screen name="AllRides" component={AllRidesScreen} />
+        <PassengerStack.Screen name="Location" component={LocationScreen} />
         <PassengerStack.Screen name="RideDetails" component={RideDetailsScreen} />
         <PassengerStack.Screen name="SeatSelection" component={SeatSelectionScreen} />
         <PassengerStack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />

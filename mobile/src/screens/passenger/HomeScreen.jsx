@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  FlatList, ActivityIndicator,
+  FlatList, ActivityIndicator, Animated, Easing,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,31 +20,75 @@ const QUICK_ACTIONS = [
 ];
 
 function Marquee({ routes, onPress }) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const containerW = useRef(0);
+  const contentW = useRef(0);
+  const animRef = useRef(null);
+
+  const startAnim = () => {
+    if (!contentW.current || !containerW.current) return;
+    if (animRef.current) { animRef.current.stop(); animRef.current = null; }
+
+    // Start just off the right edge
+    translateX.setValue(containerW.current);
+
+    // Scroll left until content is fully off the left edge
+    // Total travel = containerW + contentW (enter from right, exit to left)
+    const totalTravel = containerW.current + contentW.current;
+    const duration = totalTravel * 30; // ms per pixel — adjust for speed
+
+    animRef.current = Animated.loop(
+      Animated.timing(translateX, {
+        toValue: -contentW.current,
+        duration,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    animRef.current.start();
+  };
+
+  useEffect(() => {
+    startAnim();
+    return () => animRef.current?.stop();
+  }, [routes]);
+
   if (!routes.length) return null;
 
   return (
-    <View style={mq.wrapper}>
+    <View
+      style={mq.wrapper}
+      onLayout={e => {
+        containerW.current = e.nativeEvent.layout.width;
+        startAnim();
+      }}
+    >
       <View style={mq.labelRow}>
         <Ionicons name="trending-up" size={12} color={COLORS.primary} />
         <Text style={mq.label}>YOUR ROUTES</Text>
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={mq.track}
-      >
-        {routes.map((r, i) => (
-          <TouchableOpacity
-            key={i}
-            style={mq.chip}
-            onPress={() => onPress(r.origin, r.destination)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="location-outline" size={11} color={COLORS.primary} />
-            <Text style={mq.chipText}>{r.origin} → {r.destination}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={mq.track}>
+        <Animated.View
+          style={{ flexDirection: 'row', transform: [{ translateX }] }}
+          onLayout={e => {
+            contentW.current = e.nativeEvent.layout.width;
+            startAnim();
+          }}
+        >
+          {/* Single copy — each route appears exactly once */}
+          {routes.map((r, i) => (
+            <TouchableOpacity
+              key={i}
+              style={mq.chip}
+              onPress={() => onPress(r.origin, r.destination)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="location-outline" size={11} color={COLORS.primary} />
+              <Text style={mq.chipText}>{r.origin} → {r.destination}</Text>
+            </TouchableOpacity>
+          ))}
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -53,8 +97,8 @@ const mq = StyleSheet.create({
   wrapper: { backgroundColor: COLORS.card, paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   label: { fontSize: 10, fontWeight: '700', color: COLORS.primary, letterSpacing: 0.8 },
-  track: { flexDirection: 'row', gap: 8, paddingRight: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0A1F4412', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  track: { overflow: 'hidden' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0A1F4412', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginRight: 10 },
   chipText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
 });
 
@@ -141,8 +185,34 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </LinearGradient>
 
+        {/* Marquee — searched routes (above location) */}
         {frequentRoutes.length > 0 && (
           <Marquee routes={frequentRoutes} onPress={(f, t) => handleSearch(f, t)} />
+        )}
+
+        {/* Location — compact inline display */}
+        {(user?.savedLocation?.city || user?.savedLocation?.village) ? (
+          <View style={s.locationRow}>
+            <Ionicons name="location" size={14} color={COLORS.primary} />
+            <Text style={s.locationText} numberOfLines={1}>
+              {[
+                user.savedLocation.village,
+                user.savedLocation.city,
+                user.savedLocation.district,
+                user.savedLocation.state,
+              ].filter(Boolean).join(', ')}
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={s.locationAdd}
+            onPress={() => navigation.getParent()?.navigate('Location')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="location-outline" size={14} color={COLORS.primary} />
+            <Text style={s.locationAddText}>Add your location</Text>
+            <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
+          </TouchableOpacity>
         )}
 
         <View style={s.section}>
@@ -215,4 +285,18 @@ const s = StyleSheet.create({
   emptyText: { color: COLORS.textSecondary, fontSize: SIZES.sm },
   viewAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 16, borderWidth: 1.5, borderColor: '#0A1F4430', ...SHADOWS.card },
   viewAllText: { flex: 1, fontSize: SIZES.base, color: COLORS.primary, fontWeight: '600' },
+  locationRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  locationText: { flex: 1, fontSize: SIZES.sm, color: COLORS.text, fontWeight: '500' },
+  locationAdd: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  locationAddText: { flex: 1, fontSize: SIZES.sm, color: COLORS.primary, fontWeight: '500' },
 });

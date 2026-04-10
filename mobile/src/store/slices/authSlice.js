@@ -66,6 +66,10 @@ const authSlice = createSlice({
       clearSession();
     },
     clearError: (state) => { state.error = null; },
+    updateUser: (state, { payload }) => {
+      // Merge updated fields into user — preserves existing fields
+      state.user = { ...state.user, ...payload };
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -94,6 +98,7 @@ const authSlice = createSlice({
       // fetchMe — update user in state and storage
       .addCase(fetchMe.fulfilled, (state, { payload }) => {
         state.user = payload;
+        AsyncStorage.setItem(`user`, JSON.stringify(payload)).catch(() => {});
       })
       // restoreSession
       .addCase(restoreSession.fulfilled, (state, { payload }) => {
@@ -107,5 +112,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, updateUser } = authSlice.actions;
 export default authSlice.reducer;

@@ -1,0 +1,62 @@
+{
+  "district": "Sindhudurg",
+  "state": "Maharashtra",
+  "talukas": [
+    {
+      "name": "Kudal",
+      "villages": [
+        "Kudal","Pinguli","Walawal","Nerur","Bambarde",
+        "Gavase","Mangaon","Ambadgaon","Andurle","Parule"
+      ]
+    },
+    {
+      "name": "Malvan",
+      "villages": [
+        "Malvan","Tarkarli","Achara","Chivla","Revandi",
+        "Devbag","Kolamb","Kandalgaon","Wayari","Sarjekot"
+      ]
+    },
+    {
+      "name": "Sawantwadi",
+      "villages": [
+        "Sawantwadi","Amboli","Banda","Shiroda","Insuli",
+        "Madkhol","Kalse","Verle","Satarda","Majgaon"
+      ]
+    },
+    {
+      "name": "Kankavli",
+      "villages": [
+        "Kankavli","Kasarde","Nandgaon","Tarandale","Phondaghat",
+        "Otav","Harkul Budruk","Harkul Khurd","Sangave","Shiraval"
+      ]
+    },
+    {
+      "name": "Vengurla",
+      "villages": [
+        "Vengurla","Shiroda","Redi","Tulas","Ansur",
+        "Vetore","Matond","Dabholi","Parabwadi","Kelus"
+      ]
+    },
+    {
+      "name": "Devgad",
+      "villages": [
+        "Devgad","Jamsande","Mithmumbari","Padel","Vijaydurg",
+        "Naringre","Katwan","Hindale","Mond","Wada"
+      ]
+    },
+    {
+      "name": "Dodamarg",
+      "villages": [
+        "Dodamarg","Tilari","Kudase","Shirange","Zare Bambar",
+        "Morle","Ambadgaon","Kudalgaon","Usap","Terwan Medhe"
+      ]
+    },
+    {
+      "name": "Vaibhavwadi",
+      "villages": [
+        "Vaibhavwadi","Karul","Nadhavade","Arule","Umbarde",
+        "Achirne","Tithavali","Khambalwadi","Bhui Bawada","Kumbharli"
+      ]
+    }
+  ]
+}

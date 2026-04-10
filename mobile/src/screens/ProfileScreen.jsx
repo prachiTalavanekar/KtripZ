@@ -81,6 +81,15 @@ export default function ProfileScreen({ navigation }) {
                 <Text style={styles.infoLabel}>Phone</Text>
                 <Text style={styles.infoValue}>{user?.phone}</Text>
               </View>
+              {user?.savedLocation?.city || user?.savedLocation?.village ? (
+                <View style={styles.infoRow}>
+                  <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.infoLabel}>Location</Text>
+                  <Text style={styles.infoValue} numberOfLines={1}>
+                    {[user.savedLocation.village, user.savedLocation.city, user.savedLocation.state].filter(Boolean).join(', ')}
+                  </Text>
+                </View>
+              ) : null}
               <TouchableOpacity style={styles.editBtn} onPress={() => setEditing(true)}>
                 <Ionicons name="pencil-outline" size={16} color={COLORS.primary} />
                 <Text style={styles.editBtnText}>Edit Profile</Text>
@@ -88,6 +97,28 @@ export default function ProfileScreen({ navigation }) {
             </>
           )}
         </View>
+
+        {/* Manage Location */}
+        <TouchableOpacity
+          style={styles.locationBtn}
+          onPress={() => navigation.getParent()?.navigate('Location')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.locationBtnLeft}>
+            <View style={styles.locationBtnIcon}>
+              <Ionicons name="location" size={18} color={COLORS.primary} />
+            </View>
+            <View>
+              <Text style={styles.locationBtnTitle}>Manage Location</Text>
+              <Text style={styles.locationBtnSub}>
+                {user?.savedLocation?.city || user?.savedLocation?.village
+                  ? [user.savedLocation.village, user.savedLocation.city].filter(Boolean).join(', ')
+                  : 'No location saved'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.textSecondary} />
+        </TouchableOpacity>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
@@ -128,4 +159,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#E74C3C40', ...SHADOWS.card,
   },
   logoutText: { fontSize: SIZES.base, color: COLORS.error, fontWeight: '600' },
+  locationBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: 14,
+    marginBottom: 12, ...SHADOWS.card,
+  },
+  locationBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  locationBtnIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#0A1F4412', alignItems: 'center', justifyContent: 'center' },
+  locationBtnTitle: { fontSize: SIZES.base, fontWeight: '600', color: COLORS.text },
+  locationBtnSub: { fontSize: SIZES.xs, color: COLORS.textSecondary, marginTop: 2 },
 });

@@ -19,6 +19,37 @@ exports.updateProfile = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.saveLocation = async (req, res, next) => {
+  try {
+    const { country, state, district, city, village, street, pincode, lat, lng } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { savedLocation: { country, state, district, city, village, street, pincode, lat, lng } },
+      { new: true }
+    ).select('-password');
+    res.json(user);
+  } catch (err) { next(err); }
+};
+
+exports.saveLocation = async (req, res, next) => {
+  try {
+    const { country, state, district, city, village, street, pincode, lat, lng } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { savedLocation: { country, state, district, city, village, street, pincode, lat, lng } },
+      { new: true }
+    ).select('-password');
+    res.json({ message: 'Location saved', savedLocation: user.savedLocation });
+  } catch (err) { next(err); }
+};
+
+exports.getLocation = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select('savedLocation');
+    res.json(user.savedLocation || {});
+  } catch (err) { next(err); }
+};
+
 exports.getEarnings = async (req, res, next) => {
   try {
     const Payment = require('../models/Payment');
